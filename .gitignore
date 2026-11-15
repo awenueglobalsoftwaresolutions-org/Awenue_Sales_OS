@@ -36,3 +36,5 @@ Thumbs.db
 .dev.vars
 .dev.vars.*
 **/.dev.vars
+.vercel
+.env*
