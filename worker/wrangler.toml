@@ -1,0 +1,15 @@
+name = "awenue-files-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "awenue-org-files"
+
+[vars]
+SUPABASE_URL = "https://vpbkjtrdsqjyyiypozod.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_SbumP2TY9q94qX9WRz6tLA_91Lp9x0f"          # public anon key, same as the frontend .env
+ALLOWED_ORIGINS = "http://localhost:5173"            # comma-separated; add your production URL later
+MAX_UPLOAD_BYTES = "52428800"                         # 50 MB (Workers free plan caps request bodies at 100 MB)
+
+# Secret (never put in this file):  npx wrangler secret put FILE_SIGNING_SECRET
