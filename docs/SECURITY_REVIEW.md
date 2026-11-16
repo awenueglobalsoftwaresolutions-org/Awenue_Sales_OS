@@ -16,6 +16,13 @@ Last reviewed against migrations 0001 to 0007. The database rules are covered by
 | Files | Private R2 bucket, short-lived signed links, names never used in storage keys, uploads authorised by row level security. |
 | CSV | Cells starting with `=`, `+`, `-` or `@` are prefixed on export so spreadsheets don't run them as formulas. |
 
+## Enhancement 2 additions
+- **Audit logs** are append-only. The database blocks UPDATE and DELETE. Only a retention purge removes rows, and that itself is logged.
+- **Secrets** are stripped before any log write (passwords, tokens, service keys).
+- **IP addresses** are taken from CF-Connecting-IP, which Cloudflare sets and visitors can't spoof. x-forwarded-for is accepted as a fallback but is flagged as unverified.
+- **Sign-ins** go through the Worker, which records every attempt and throttles 10+ failures in 15 minutes per IP or email without revealing whether the email exists.
+- **Invoice immutability**: finalized invoices can only change their due date and notes. Voiding a payment needs the Approve permission. Cancellation requires a reason.
+
 ## Findings fixed in this phase
 1. **Open sign-up gave data access (high).** With Supabase's default settings anyone could create an account and was added to the workspace as a Sales Executive. New accounts are now inactive until approved. Also turn sign-ups off in Supabase (see DEPLOYMENT.md).
 2. **Silent permission failures (medium).** Row level security skips rows you can't change without raising an error, so the app showed a success message. Every update and delete now confirms a row was actually changed.

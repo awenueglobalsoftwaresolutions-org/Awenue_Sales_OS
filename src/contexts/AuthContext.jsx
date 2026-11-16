@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { apiConfigured, apiPost, apiPublicPost } from '../services/api'
+import { logEvent } from '../services/audit'
 
 const AuthContext = createContext(null)
 
@@ -21,6 +23,8 @@ export function AuthProvider({ children }) {
       setPermissions(new Set(perms || []))
     } else setPermissions(new Set())
     setProfileReady(true)
+    // Once per browser session, remember where this connection is so later activity can show an approximate location.
+    try { if (data && apiConfigured && !sessionStorage.getItem('awenue.geo')) { sessionStorage.setItem('awenue.geo', '1'); apiPost('/audit/session', {}).catch(() => {}) } } catch { /* storage unavailable */ }
   }, [])
 
   useEffect(() => {
@@ -54,8 +58,23 @@ export function AuthProvider({ children }) {
     has: (key) => permissions.has(key),
     isSuperAdmin: profile?.role === 'super_admin',
     isAdmin: permissions.has('settings.manage'),
-    signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
-    signOut: () => supabase.auth.signOut(),
+    // Signing in through the server records every attempt (with IP and device) and throttles repeated failures.
+    // If the server can't be reached at all, fall back to a direct sign-in so people aren't locked out.
+    signIn: async (email, password) => {
+      if (!apiConfigured) return supabase.auth.signInWithPassword({ email, password })
+      try {
+        const s = await apiPublicPost('/auth/login', { email, password })
+        const { error } = await supabase.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token })
+        return { error }
+      } catch (e) {
+        if (e.status) return { error: { message: e.message } }
+        return supabase.auth.signInWithPassword({ email, password })
+      }
+    },
+    signOut: async () => {
+      await Promise.race([logEvent({ action: 'logout', module: 'auth', description: 'Signed out' }), new Promise((r) => setTimeout(r, 1500))])
+      return supabase.auth.signOut()
+    },
     sendPasswordReset: (email) =>
       supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` }),
     updatePassword: (password) => supabase.auth.updateUser({ password }),

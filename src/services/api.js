@@ -19,3 +19,11 @@ export async function apiPost(path, body) {
   if (!res.ok) throw new Error(data.error || 'Request failed. Please try again.')
   return data
 }
+
+// For calls made before anyone is signed in (the audited sign-in).
+export async function apiPublicPost(path, body) {
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed. Please try again.'), { status: res.status })
+  return data
+}

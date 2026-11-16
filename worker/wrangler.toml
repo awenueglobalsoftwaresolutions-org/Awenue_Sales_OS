@@ -12,4 +12,6 @@ SUPABASE_ANON_KEY = "sb_publishable_SbumP2TY9q94qX9WRz6tLA_91Lp9x0f"          # 
 ALLOWED_ORIGINS = "https://awenuesalesos.vercel.app"            # comma-separated; add your production URL later
 MAX_UPLOAD_BYTES = "52428800"                         # 50 MB (Workers free plan caps request bodies at 100 MB)
 
-# Secret (never put in this file):  npx wrangler secret put FILE_SIGNING_SECRET
+# Secrets (never put these in this file):
+#   npx wrangler secret put FILE_SIGNING_SECRET
+#   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY   (Supabase > Project Settings > API > service_role; server-side only)

@@ -3,7 +3,7 @@
 Everything below fits the free tiers except Supabase backups (use a paid Supabase plan for production).
 
 ## 1. Supabase
-1. Create the project and run every file in `supabase/migrations` in order (0001 to 0007).
+1. Create the project and run every file in `supabase/migrations` in order (0001 to 0009).
 2. **Authentication > Providers > Email:** turn **off** "Allow new users to sign up". People are added from Settings > Users.
 3. **Authentication > URL Configuration:** set Site URL to your production URL and add `<your URL>/reset-password` to Redirect URLs.
 4. **Authentication > Emails:** for invitation emails to work reliably, configure your own SMTP. (The built-in sender is limited to a few emails per hour.)

@@ -22,6 +22,9 @@ const PipelinePage = lazy(() => import('./pages/Pipeline/PipelinePage'))
 const TasksPage = lazy(() => import('./pages/Tasks/TasksPage'))
 const ActivitiesPage = lazy(() => import('./pages/Activities/ActivitiesPage'))
 const SettingsPage = lazy(() => import('./pages/Settings/SettingsPage'))
+const ReportsPage = lazy(() => import('./pages/Reports/ReportsPage'))
+const InvoicesPage = lazy(() => import('./pages/Invoices/InvoicesPage'))
+const InvoiceDetail = lazy(() => import('./pages/Invoices/InvoiceDetail'))
 
 const guarded = (perm, el) => <Gate perm={perm}>{el}</Gate>
 
@@ -46,6 +49,9 @@ export default function App() {
             <Route path="pipeline" element={guarded('deals.view', <PipelinePage />)} />
             <Route path="tasks" element={guarded('tasks.view', <TasksPage />)} />
             <Route path="activities" element={guarded('activities.view', <ActivitiesPage />)} />
+            <Route path="reports" element={guarded('reports.view', <ReportsPage />)} />
+            <Route path="invoices" element={guarded('invoices.view', <InvoicesPage />)} />
+            <Route path="invoices/:id" element={guarded('invoices.view', <InvoiceDetail />)} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

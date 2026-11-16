@@ -4,6 +4,7 @@ import PageHeader from '../../components/common/PageHeader'
 import { AccountSection, OrganizationSection, ProfileSection, ReferenceSection, ServicesSection } from './Sections'
 import UsersSection from './UsersSection'
 import RolesSection from './RolesSection'
+import InvoiceSettingsSection from './InvoiceSettingsSection'
 
 const TABS = [
   { key: 'profile', label: 'Profile', Section: ProfileSection },
@@ -13,6 +14,7 @@ const TABS = [
   { key: 'pipeline', label: 'Pipeline & sources', Section: ReferenceSection, perm: 'settings.view' },
   { key: 'users', label: 'Users', Section: UsersSection, perm: 'users.view' },
   { key: 'roles', label: 'Roles & permissions', Section: RolesSection, perm: 'roles.view' },
+  { key: 'invoices', label: 'Invoice settings', Section: InvoiceSettingsSection, perm: 'invoices.view' },
 ]
 
 export default function SettingsPage() {

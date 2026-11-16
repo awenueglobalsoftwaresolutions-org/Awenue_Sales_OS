@@ -1,4 +1,4 @@
-import { LayoutDashboard, UserPlus, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, Settings } from 'lucide-react'
+import { LayoutDashboard, UserPlus, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, FileText, Receipt, Settings } from 'lucide-react'
 
 export const NAV_ITEMS = [
   { perm: 'dashboard.view', to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -9,6 +9,8 @@ export const NAV_ITEMS = [
   { perm: 'deals.view', to: '/pipeline', label: 'Sales Pipeline', icon: KanbanSquare },
   { perm: 'tasks.view', to: '/tasks', label: 'Tasks & Follow-ups', icon: CheckSquare },
   { perm: 'activities.view', to: '/activities', label: 'Activities', icon: Activity },
+  { perm: 'reports.view', to: '/reports', label: 'Reports & Audits', icon: FileText },
+  { perm: 'invoices.view', to: '/invoices', label: 'Invoices', icon: Receipt },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

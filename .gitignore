@@ -1,40 +1,4 @@
-# Dependencies
-node_modules/
-
-# Build outputs
-dist/
-build/
-.vite/
-
-# Environment secrets
+node_modules
+dist
 .env
-.env.*
-!.env.example
-
-# Cloudflare secrets
-.dev.vars
-.dev.vars.*
-.wrangler/
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.bak
-
-# Cloudflare local state
-.wrangler/
-**/.wrangler/
-
-# Local secrets
-.dev.vars
-.dev.vars.*
-**/.dev.vars
-.vercel
-.env*
+.env.local

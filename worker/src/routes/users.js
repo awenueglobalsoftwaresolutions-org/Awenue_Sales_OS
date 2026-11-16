@@ -1,5 +1,6 @@
 import { HttpError, mustUuid } from '../lib/http.js'
 import { adminClient, authenticate, myProfile, requirePermission } from '../lib/supabase.js'
+import { writeAudit } from '../lib/audit.js'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const ROLE_KEY = /^[a-z][a-z0-9_]{1,40}$/
@@ -8,6 +9,7 @@ const text = (v, max) => { const s = String(v ?? '').trim(); return s ? s.slice(
 // POST /users/create {email, full_name, role, password?, manager_id?, job_title?, department?, phone?}
 // Without a password an invitation email is sent; with one the account is created with a temporary password the person must change.
 export async function createUser(request, env) {
+  const req = request
   const ctx = await authenticate(request, env)
   await requirePermission(ctx, 'users.create')
   const me = await myProfile(ctx)
@@ -53,6 +55,8 @@ export async function createUser(request, env) {
     await admin.auth(`admin/users/${userId}`, { method: 'DELETE' })      // don't leave a half-created account
     throw new HttpError(500, 'Could not set up the profile. Nothing was created.')
   }
+  await writeAudit(env, req, { userId: me.id, username: me.full_name || me.email, action: 'create', module: 'users', record: userId,
+    description: `Created user ${fullName} (${email}) as ${role}, ${withPassword ? 'temporary password' : 'invitation email'}`, metadata: { role } })
   return { id: userId, invited: !withPassword }
 }
 
@@ -73,5 +77,6 @@ export async function removeUser(request, env) {
   // Records they created or owned stay in the CRM (their owner fields become empty). Deactivating is usually the better choice.
   const del = await adminClient(env).auth(`admin/users/${userId}`, { method: 'DELETE' })
   if (!del.ok) throw new HttpError(409, 'That user could not be removed. The workspace must keep at least one active Super Admin.')
+  await writeAudit(env, request, { userId: me.id, username: me.full_name || me.email, action: 'delete', module: 'users', record: userId, description: `Removed user account (${target.role})`, metadata: { role: target.role } })
   return { removed: true }
 }

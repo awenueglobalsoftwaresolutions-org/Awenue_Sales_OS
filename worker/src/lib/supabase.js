@@ -31,7 +31,7 @@ export async function requirePermission(ctx, key) {
 }
 
 export async function myProfile(ctx) {
-  const r = await ctx.sb(`profiles?id=eq.${ctx.user.id}&select=id,role,workspace_id,is_active`)
+  const r = await ctx.sb(`profiles?id=eq.${ctx.user.id}&select=id,role,workspace_id,is_active,full_name,email`)
   const [p] = r.ok ? await r.json() : []
   if (!p || !p.is_active) throw new HttpError(403, 'Your account is not active.')
   return p

@@ -1,6 +1,6 @@
 # Awenue Sales OS — v1.0 MVP
 
-**Status:** Phase 1 (setup, schema, RLS, auth, shell) and Phase 2 (organizations, contacts, leads, org file manager) Phase 3 (deals, pipeline, tasks) and Phase 4 (activities, dashboard, search, CSV, settings) are done.
+**Status:** Phase 1 (setup, schema, RLS, auth, shell) and Phase 2 (organizations, contacts, leads, org file manager) Phase 3, 4 and enhancement steps 1 (RBAC) and 2 (audit, invoices) are done.
 
 ## Setup
 1. `npm install`
@@ -12,6 +12,8 @@
    - `supabase/migrations/0005_phase3.sql` (Phase 3: deal stage dates + history, task completion)
    - `supabase/migrations/0006_phase4.sql` (Phase 4: dashboard statistics, last-admin protection)
    - `supabase/migrations/0007_rbac.sql` (roles & permissions, richer profiles, safe sign-up, avatars)
+   - `supabase/migrations/0008_audit.sql` (append-only audit trail, IP/device capture, report queries, retention)
+   - `supabase/migrations/0009_invoices.sql` (invoice management, finalization rules, payments, history)
 3. `cp .env.example .env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (anon key only).
 4. Supabase > Authentication > URL Configuration: set Site URL to `http://localhost:5173` and add `http://localhost:5173/reset-password` to Redirect URLs.
 5. Supabase > Authentication > Users > Add user (email + password, tick "Auto confirm").
@@ -98,3 +100,19 @@ Limits: 50 MB per file (the Workers free plan allows up to 100 MB request bodies
 - [ ] A new user who signs up on their own is inactive until you activate them
 - [ ] Settings > Profile: upload a picture, change job title and time zone
 - [ ] The only Super Admin can't be demoted, deactivated or removed
+
+## Enhancement 2 checklist
+- [ ] Run `0008_audit.sql` then `0009_invoices.sql` in the SQL Editor
+- [ ] Redeploy the Worker (`cd worker && npx wrangler deploy`): it now handles sign-in (`/auth/login`), audit events and sessions. Set `VITE_API_URL` in `.env`. Audited sign-in (with failed attempts, IP and location) only works through the Worker
+- [ ] Reports & Audits: sign out and back in, then open Reports, pick yourself under "Any employee", and the sign-in appears with IP, location and browser
+- [ ] Enter a wrong password once and check the failed attempt shows in "All activity"
+- [ ] Filter by employee, module, date range, time window and location; the counts in the summary cards update
+- [ ] Download a report as CSV, Excel and PDF; confirm all three open correctly with the right data
+- [ ] Invoices: create a draft, add five line items, verify the totals match the preview exactly
+- [ ] Send the invoice (needs the Approve permission); try editing the bill-to name on a sent invoice — it's blocked
+- [ ] Record two payments; the status moves to Partially Paid then Paid
+- [ ] Cancel an invoice that has no payments, with a reason
+- [ ] Download the PDF; the invoice number, totals and company details are correct
+- [ ] Duplicate an invoice; the copy starts as a draft with today's dates
+- [ ] Settings > Invoice settings: change the number prefix, create a new invoice, confirm the prefix changed
+- [ ] The audit trail on Reports shows all of the above
