@@ -30,6 +30,7 @@ export const removeAvatar = (userId) => mustAffect(supabase.from('profiles').upd
 export const listAllServices = () => rows(supabase.from('services').select('*').order('sort_order').order('name'))
 export const addService = (name, sortOrder, profile) =>
   supabase.from('services').insert({ ...clean({ name }), sort_order: sortOrder, workspace_id: profile.workspace_id }).then(ok)
+export const updateService = (id, patch) => mustAffect(supabase.from('services').update(patch).eq('id', id))
 export const setServiceActive = (id, is_active) => mustAffect(supabase.from('services').update({ is_active }).eq('id', id))
 
 // ---- users ----

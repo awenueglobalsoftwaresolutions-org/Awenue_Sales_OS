@@ -17,6 +17,9 @@ import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import ActivityTimeline from '../../components/common/ActivityTimeline'
 import RecordTasks from '../../components/common/RecordTasks'
+import RecordInvoices from '../../components/invoices/RecordInvoices'
+import RecordEmails from '../../components/email/RecordEmails'
+import { fromDeal } from '../../lib/invoicePrefill'
 import DealForm from '../../components/forms/DealForm'
 import LostReasonModal from './LostReasonModal'
 
@@ -85,6 +88,8 @@ export default function DealDetail() {
         {d.notes && <div className="mt-4 border-t border-ink-100 pt-4"><p className="text-xs font-medium text-ink-500">Notes</p><p className="mt-1 whitespace-pre-wrap text-sm text-ink-700">{d.notes}</p></div>}
       </section>
 
+      {can('invoices.view') && <RecordInvoices column="deal_id" id={id} prefill={fromDeal(d)} />}
+      {can('communications.view') && <RecordEmails column="deal_id" id={id} context={{ deal: d, contact: d.contact, organization: d.organization }} />}
       <RecordTasks column="deal_id" id={id} />
       <ActivityTimeline key={timelineKey} column="deal_id" id={id} title="Deal history" />
 

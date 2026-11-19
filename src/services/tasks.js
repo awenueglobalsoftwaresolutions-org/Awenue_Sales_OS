@@ -4,7 +4,7 @@ import { addDays, format } from 'date-fns'
 import { OPEN_TASK_STATUSES } from '../constants/options'
 
 export const TASK_FIELDS = ['title', 'description', 'task_type', 'priority', 'status', 'due_date', 'due_time', 'assigned_to', 'lead_id', 'organization_id', 'contact_id', 'deal_id']
-const SELECT = '*, lead:leads(id,lead_number,first_name,last_name), organization:organizations(id,name), contact:contacts(id,first_name,last_name), deal:deals(id,title), assignee:profiles!tasks_assigned_to_fkey(id,full_name)'
+const SELECT = '*, lead:leads(id,lead_number,first_name,last_name,email), organization:organizations(id,name), contact:contacts(id,first_name,last_name,email), deal:deals(id,title), assignee:profiles!tasks_assigned_to_fkey(id,full_name)'
 const ymd = (d) => format(d, 'yyyy-MM-dd')
 
 function applyFilters(q, f = {}) {

@@ -15,6 +15,9 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import RelatedSection from '../../components/common/RelatedSection'
 import ActivityTimeline from '../../components/common/ActivityTimeline'
 import RecordTasks from '../../components/common/RecordTasks'
+import RecordInvoices from '../../components/invoices/RecordInvoices'
+import RecordEmails from '../../components/email/RecordEmails'
+import { fromContact } from '../../lib/invoicePrefill'
 import ContactForm from '../../components/forms/ContactForm'
 
 export default function ContactDetail() {
@@ -60,6 +63,8 @@ export default function ContactDetail() {
         {(d) => <li key={d.id} className="py-2"><Link className="text-sm font-medium text-brand-600 hover:underline" to={`/deals/${d.id}`}>{d.title}</Link><p className="text-xs text-ink-500">{fmtMoney(d.value, d.currency)}</p></li>}
       </RelatedSection>
 
+      {can('invoices.view') && <RecordInvoices column="contact_id" id={id} prefill={fromContact(c)} />}
+      {can('communications.view') && <RecordEmails column="contact_id" id={id} context={{ contact: c }} />}
       <RecordTasks column="contact_id" id={id} />
       <ActivityTimeline column="contact_id" id={id} title="Communication history" />
 

@@ -3,7 +3,7 @@ import { searchFilter } from '../lib/query'
 
 const run = async (q) => { const { data, error } = await q; if (error) throw error; return data }
 
-const BASE = `*, organization:organizations(id,name), contact:contacts(id,first_name,last_name)`
+const BASE = `*, organization:organizations(id,name), contact:contacts(id,first_name,last_name,email,phone)`
 
 export async function listInvoices({ page, pageSize, search, filters, sort }) {
   let q = supabase.from('invoices').select(BASE, { count: 'exact' })
@@ -20,7 +20,7 @@ export async function listInvoices({ page, pageSize, search, filters, sort }) {
 }
 
 export async function getInvoice(id) {
-  const { data, error } = await supabase.from('invoices').select(`${BASE}, items:invoice_items(*), events:invoice_events(id,event_type,description,created_at,user_id), sends:invoice_sends(id,channel,recipient,sent_at), payments:invoice_payments(*)`).eq('id', id).maybeSingle()
+  const { data, error } = await supabase.from('invoices').select(`${BASE}, lead:leads(id,lead_number,first_name,last_name), deal:deals(id,title), items:invoice_items(*), events:invoice_events(id,event_type,description,created_at,user_id), sends:invoice_sends(id,channel,recipient,sent_at), payments:invoice_payments(*)`).eq('id', id).maybeSingle()
   if (error) throw error
   return data
 }
@@ -39,3 +39,63 @@ export const removePayment = (id) => supabase.from('invoice_payments').delete().
 export const cancelInvoice = (id, reason) => supabase.from('invoices').update({ status: 'cancelled', cancelled_reason: reason }).eq('id', id).then(({ error }) => { if (error) throw error })
 export const deleteInvoice = (id) => supabase.from('invoices').delete().eq('id', id).then(({ error }) => { if (error) throw error })
 export const getSummary = () => supabase.rpc('invoice_summary', { p_today: new Date().toISOString().slice(0, 10), p_month_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10) }).then(({ data, error }) => { if (error) throw error; return data })
+
+// ---- connections to the rest of the CRM ----
+export async function listServicesWithPrices() {
+  const { data, error } = await supabase.from('services').select('id,name,default_price,default_tax_rate').eq('is_active', true).order('sort_order')
+  if (error) throw error
+  return data
+}
+export async function suggestLines(q) {
+  const { data, error } = await supabase.rpc('suggest_invoice_lines', { p_q: q })
+  if (error) throw error
+  return data
+}
+export async function listInvoicesForRecord(column, id) {
+  const { data, error } = await supabase.from('invoices').select('id,invoice_number,status,issue_date,due_date,total,balance,currency,bill_to_name').eq(column, id).order('created_at', { ascending: false }).limit(100)
+  if (error) throw error
+  return data
+}
+export async function getRecordTotals(column, id) {
+  const { data, error } = await supabase.rpc('record_invoice_totals', { p_column: column, p_id: id })
+  if (error) throw error
+  return data
+}
+
+const place = (o) => [o?.address, [o?.city, o?.state].filter(Boolean).join(', '), o?.country].filter(Boolean).join('\n')
+const fullName = (p) => [p?.first_name, p?.last_name].filter(Boolean).join(' ')
+const ORG_COLS = 'id,name,address,city,state,country,industry'
+
+// Type-ahead for "Bill to": people and companies you already have, so details are never retyped.
+export async function searchCustomers(term) {
+  const t = term.trim().replace(/[,()*%\\]/g, ' ')
+  if (t.length < 2) return []
+  const like = (cols) => cols.map((c) => `${c}.ilike.*${t}*`).join(',')
+  const [contacts, orgs, leads] = await Promise.all([
+    supabase.from('contacts').select(`id,first_name,last_name,email,phone,designation,organization:organizations(${ORG_COLS})`).or(like(['first_name', 'last_name', 'email'])).limit(5),
+    supabase.from('organizations').select(ORG_COLS).or(like(['name'])).limit(5),
+    supabase.from('leads').select(`id,lead_number,first_name,last_name,email,phone,organization:organizations(${ORG_COLS})`).or(like(['first_name', 'last_name', 'email'])).limit(4),
+  ])
+  const err = contacts.error || orgs.error || leads.error
+  if (err) throw err
+  return [
+    ...orgs.data.map((o) => ({ kind: 'Organization', key: `o${o.id}`, title: o.name, subtitle: [o.industry, o.city].filter(Boolean).join(' · '), org: o })),
+    ...contacts.data.map((c) => ({ kind: 'Contact', key: `c${c.id}`, title: fullName(c), subtitle: [c.designation, c.organization?.name, c.email].filter(Boolean).join(' · '), contact: c })),
+    ...leads.data.map((l) => ({ kind: 'Lead', key: `l${l.id}`, title: fullName(l), subtitle: [`LD-${String(l.lead_number).padStart(4, '0')}`, l.organization?.name, l.email].filter(Boolean).join(' · '), lead: l })),
+  ]
+}
+
+// What to copy onto the invoice when someone is chosen from the suggestions.
+export async function customerToInvoice(s) {
+  if (s.org) {
+    const { data } = await supabase.from('contacts').select('id,first_name,last_name,email,phone').eq('organization_id', s.org.id).order('created_at').limit(1)
+    const c = data?.[0]
+    return { bill_to_name: s.org.name, bill_to_address: place(s.org), bill_to_email: c?.email || '', bill_to_phone: c?.phone || '', organization_id: s.org.id, contact_id: c?.id || '', lead_id: '' }
+  }
+  if (s.contact) {
+    const c = s.contact
+    return { bill_to_name: fullName(c), bill_to_address: place(c.organization), bill_to_email: c.email || '', bill_to_phone: c.phone || '', organization_id: c.organization?.id || '', contact_id: c.id, lead_id: '' }
+  }
+  const l = s.lead
+  return { bill_to_name: fullName(l), bill_to_address: place(l.organization), bill_to_email: l.email || '', bill_to_phone: l.phone || '', organization_id: l.organization?.id || '', contact_id: '', lead_id: l.id, _lead_label: `LD-${String(l.lead_number).padStart(4, '0')} · ${fullName(l)}` }
+}

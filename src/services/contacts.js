@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import { clean, pageRange, searchFilter, mustAffect } from '../lib/query'
 
 export const CONTACT_FIELDS = ['first_name', 'last_name', 'designation', 'email', 'phone', 'linkedin_url', 'organization_id', 'country', 'notes']
-const SELECT = '*, organization:organizations(id,name)'
+const SELECT = '*, organization:organizations(id,name,address,city,state,country)'
 
 export async function listContacts({ page, pageSize, search, filters, sort }) {
   let q = supabase.from('contacts').select(SELECT, { count: 'exact' })

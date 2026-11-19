@@ -23,6 +23,15 @@ Last reviewed against migrations 0001 to 0007. The database rules are covered by
 - **Sign-ins** go through the Worker, which records every attempt and throttles 10+ failures in 15 minutes per IP or email without revealing whether the email exists.
 - **Invoice immutability**: finalized invoices can only change their due date and notes. Voiding a payment needs the Approve permission. Cancellation requires a reason.
 
+## Enhancement 4 additions (email)
+- **Gmail tokens** are sealed with AES-256-GCM using a Worker secret. The database column is not granted to the browser at all, so no app code or API call can read it. Disconnecting revokes the grant at Google.
+- **Sending identity**: the From address is always the signed-in person's connected account. The request can't set or override it.
+- **Record access**: each email is linked to records the sender must be able to see. Anyone who can see a record can see the emails attached to it, and nobody else can.
+- **Header injection**: line breaks are stripped from subjects and addresses, and addresses are validated. Non-ASCII subjects are encoded per RFC 2047.
+- **Limits**: 50 recipients per email, 10 MB of attachments, 200 emails per person per hour.
+- **History is permanent**: sent emails can't be edited or deleted from the app.
+- **Known limits**: Bcc recipients are stored and visible to people who can see the record (so use Bcc deliberately). Gmail doesn't report opens or reads. Replies aren't read back into the CRM.
+
 ## Findings fixed in this phase
 1. **Open sign-up gave data access (high).** With Supabase's default settings anyone could create an account and was added to the workspace as a Sales Executive. New accounts are now inactive until approved. Also turn sign-ups off in Supabase (see DEPLOYMENT.md).
 2. **Silent permission failures (medium).** Row level security skips rows you can't change without raising an error, so the app showed a success message. Every update and delete now confirms a row was actually changed.

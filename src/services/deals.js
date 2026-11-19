@@ -5,7 +5,7 @@ import { stageProbability } from '../constants/options'
 
 export const DEAL_FIELDS = ['title', 'organization_id', 'contact_id', 'lead_id', 'interested_service', 'value', 'currency', 'expected_close_date',
   'stage', 'assigned_to', 'probability', 'description', 'notes', 'lost_reason']
-const SELECT = '*, organization:organizations(id,name), contact:contacts(id,first_name,last_name), assignee:profiles!deals_assigned_to_fkey(id,full_name)'
+const SELECT = '*, organization:organizations(id,name), contact:contacts(id,first_name,last_name,email,phone), assignee:profiles!deals_assigned_to_fkey(id,full_name)'
 // leads <-> deals have two foreign keys, so the embed needs an explicit hint
 const DETAIL_SELECT = `${SELECT}, lead:leads!deals_lead_id_fkey(id,lead_number,first_name,last_name)`
 const ymd = (d) => format(d, 'yyyy-MM-dd')

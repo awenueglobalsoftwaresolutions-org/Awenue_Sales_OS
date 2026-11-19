@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Plus } from 'lucide-react'
+import { Check, CheckSquare, Mail, Plus } from 'lucide-react'
+import EmailComposer from '../../components/email/EmailComposer'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -42,6 +43,7 @@ export default function TasksPage() {
   const users = useFetch(listProfiles, [])
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [mailing, setMailing] = useState(null)
 
   useEffect(() => { if (params.get('new')) { setEditing({}); setParams({}, { replace: true }) } }, [params, setParams])
   const refresh = () => { list.reload(); counts.reload() }
@@ -79,6 +81,7 @@ export default function TasksPage() {
     } },
     { key: 'priority', header: 'Priority', sortKey: 'priority_rank', render: (t) => <Badge tone={PRIORITY_TONE[t.priority]}>{labelOf(PRIORITIES, t.priority)}</Badge> },
     { key: 'status', header: 'Status', render: (t) => <Badge tone={TASK_STATUS_TONE[t.status]}>{labelOf(TASK_STATUSES, t.status)}</Badge> },
+    { key: 'mail', header: '', className: 'w-10', render: (t) => (can('communications.create') ? <button className="btn-ghost !p-1.5" aria-label={`Email about ${t.title}`} onClick={(e) => { e.stopPropagation(); setMailing(t) }}><Mail className="h-4 w-4" /></button> : null) },
     { key: 'actions', header: '', className: 'w-24', render: (t) => <RowActions canEdit={can('tasks.edit')} canDelete={can('tasks.delete')} label={t.title} onEdit={() => setEditing(t)} onDelete={() => setDeleting(t)} /> },
   ]
   const addButton = !can('tasks.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add task</button>
@@ -111,6 +114,9 @@ export default function TasksPage() {
         </>
       )}
 
+      {mailing && <EmailComposer onClose={() => setMailing(null)} onSent={() => refresh()}
+        context={{ task: mailing, contact: mailing.contact, lead: mailing.lead, organization: mailing.organization, deal: mailing.deal }}
+        initial={{ title: 'Follow-up email', subject: 'Following up: {{task.title}}', body: 'Hello {{contact.first_name}},\n\nJust following up on our conversation.\n\nBest regards,\n{{sender.name}}' }} />}
       <Modal open={Boolean(editing)} title={editing?.id ? 'Edit task' : 'Add task'} onClose={() => setEditing(null)} size="lg">
         {editing && <TaskForm key={editing.id || 'new'} initial={editing} onSubmit={save} onCancel={() => setEditing(null)} />}
       </Modal>

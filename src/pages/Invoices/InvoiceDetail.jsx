@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Copy, Download, Mail, Pencil, Send, Trash2, XCircle } from 'lucide-react'
+import { ChevronLeft, Copy, Download, Eye, FolderInput, Mail, Pencil, Send, Trash2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { addPayment, cancelInvoice, deleteInvoice, duplicateInvoice, getInvoice, recordSend, removePayment } from '../../services/invoices'
 import { effectiveStatus } from '../../lib/invoiceCalc'
 import { friendlyError } from '../../lib/errors'
-import { downloadInvoicePdf } from '../../lib/invoicePdf'
+import { downloadInvoicePdf, invoicePdfBlob } from '../../lib/invoicePdf'
+import { saveInvoicePdfToFiles } from '../../services/invoiceFiles'
+import { filesConfigured } from '../../services/files'
 import { fmtDate, fmtMoney } from '../../lib/format'
 import { fmtDay } from '../../lib/format'
 import Spinner from '../../components/common/Spinner'
@@ -17,6 +19,8 @@ import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { Field, FormError, FormFooter } from '../../components/forms/FormParts'
 import InvoiceForm from './InvoiceForm'
+import RecordEmails from '../../components/email/RecordEmails'
+import { invoiceEmailDefaults } from '../../lib/emailTemplate'
 
 const STATUS_TONE = { draft: 'gray', sent: 'blue', partially_paid: 'amber', paid: 'green', overdue: 'red', cancelled: 'gray' }
 const today = () => new Date().toISOString().slice(0, 10)
@@ -61,13 +65,15 @@ function CancelModal({ invoice, onClose, onDone }) {
 
 export default function InvoiceDetail() {
   const { id } = useParams(); const navigate = useNavigate()
-  const { can } = useAuth()
+  const { can, profile } = useAuth()
   const inv = useFetch(() => getInvoice(id), [id])
   const [editing, setEditing] = useState(false)
   const [addingPayment, setAddingPayment] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [filing, setFiling] = useState(false)
 
   if (inv.loading && !inv.data) return <Spinner className="py-20" />
   if (inv.error) return <ErrorState message={inv.error} onRetry={inv.reload} />
@@ -76,6 +82,9 @@ export default function InvoiceDetail() {
 
   const refresh = () => inv.reload()
   const dl = async () => { setDownloading(true); try { await downloadInvoicePdf(d, d.items || []) } catch (e) { toast.error(friendlyError(e)) } finally { setDownloading(false) } }
+  const openPreview = async () => { try { setPreview(URL.createObjectURL(await invoicePdfBlob(d, d.items || []))) } catch (e) { toast.error(friendlyError(e)) } }
+  const closePreview = () => { if (preview) URL.revokeObjectURL(preview); setPreview(null) }
+  const toFiles = async () => { setFiling(true); try { await saveInvoicePdfToFiles(d, d.items, profile); toast.success('Saved to the organization\'s Files (Invoices folder)') } catch (e) { toast.error(friendlyError(e)) } finally { setFiling(false) } }
   const dup = async () => { try { const newId = await duplicateInvoice(id); toast.success('Invoice duplicated'); navigate(`/invoices/${newId}`) } catch (e) { toast.error(friendlyError(e)) } }
   const send = async (channel) => { try { await recordSend(id, channel, d.bill_to_email || null); toast.success('Send recorded'); refresh() } catch (e) { toast.error(friendlyError(e)) } }
 
@@ -88,6 +97,8 @@ export default function InvoiceDetail() {
           <div className="mt-1 flex flex-wrap gap-2"><Badge tone={STATUS_TONE[st]}>{st.replace('_', ' ')}</Badge><span className="text-sm text-ink-500">Due {fmtDay(d.due_date)}</span></div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="btn-ghost border border-ink-300" onClick={openPreview}><Eye className="h-4 w-4" />Preview</button>
+          {d.organization_id && filesConfigured && can('files.create') && <button className="btn-ghost border border-ink-300" onClick={toFiles} disabled={filing}><FolderInput className="h-4 w-4" />{filing ? 'Saving…' : 'Save to files'}</button>}
           <button className="btn-ghost border border-ink-300" onClick={dl} disabled={downloading}><Download className="h-4 w-4" />{downloading ? 'Generating…' : 'Download PDF'}</button>
           <button className="btn-ghost border border-ink-300" onClick={dup}><Copy className="h-4 w-4" />Duplicate</button>
           {!isClosed && can('invoices.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
@@ -96,6 +107,14 @@ export default function InvoiceDetail() {
           {d.status === 'draft' && can('invoices.edit') && <button className="btn-ghost border border-red-200 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
       </div>
+
+      {(d.organization || d.contact || d.lead || d.deal) && (
+        <div className="flex flex-wrap gap-2 text-sm">
+          {d.organization && <Link className="rounded-full bg-brand-50 px-3 py-1 text-brand-700 hover:underline" to={`/organizations/${d.organization.id}?tab=invoices`}>Organization: {d.organization.name}</Link>}
+          {d.contact && <Link className="rounded-full bg-brand-50 px-3 py-1 text-brand-700 hover:underline" to={`/contacts/${d.contact.id}`}>Contact: {[d.contact.first_name, d.contact.last_name].filter(Boolean).join(' ')}</Link>}
+          {d.lead && <Link className="rounded-full bg-brand-50 px-3 py-1 text-brand-700 hover:underline" to={`/leads/${d.lead.id}`}>Lead: {[d.lead.first_name, d.lead.last_name].filter(Boolean).join(' ')}</Link>}
+          {d.deal && <Link className="rounded-full bg-brand-50 px-3 py-1 text-brand-700 hover:underline" to={`/deals/${d.deal.id}`}>Deal: {d.deal.title}</Link>}
+        </div>)}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <section className="lg:col-span-2 space-y-4">
@@ -146,6 +165,8 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
+      {can('communications.view') && <RecordEmails column="invoice_id" id={id} title="Invoice emails" composeLabel="Send invoice by email" includeInvoice initial={invoiceEmailDefaults(d)} context={{ invoice: d, organization: d.organization, contact: d.contact }} />}
+      <Modal open={Boolean(preview)} title={`Preview · ${d.invoice_number}`} onClose={closePreview} size="lg">{preview && <iframe title="Invoice preview" src={preview} className="h-[75vh] w-full rounded-lg border border-ink-100" />}</Modal>
       {editing && <Modal open title="Edit invoice" onClose={() => setEditing(false)} size="lg"><InvoiceForm initial={{ ...d, items: d.items || [] }} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); refresh() }} /></Modal>}
       {addingPayment && <AddPaymentModal invoice={d} onClose={() => setAddingPayment(false)} onDone={() => { setAddingPayment(false); refresh() }} />}
       {cancelling && <CancelModal invoice={d} onClose={() => setCancelling(false)} onDone={() => { setCancelling(false); refresh() }} />}

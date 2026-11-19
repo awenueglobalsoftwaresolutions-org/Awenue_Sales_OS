@@ -162,3 +162,57 @@ test('settings are admin-only; the audit trail covers invoices without per-line 
   const audit = (await q(U.root, `select updated_data from audit_logs where module = 'invoices' and record_id = $1 and action = 'update' order by id`, [send])).rows
   assert.ok(audit.some((r) => r.updated_data.status === 'sent'))
 })
+
+test('integration: service prices, deal links, line suggestions and per-record totals', async () => {
+  // services carry optional default price and tax rate (settings managers only; values are validated)
+  const svc = (await q(U.admin, `select id from services where name = 'Web Development'`)).rows[0].id
+  await q(U.admin, `update services set default_price = 1500, default_tax_rate = 18 where id = $1`, [svc])
+  assert.equal((await q(U.rep1, `update services set default_price = 1 where id = $1 returning id`, [svc])).rows.length, 0, 'reps can\'t change service prices')
+  await rejects(q(U.admin, `update services set default_tax_rate = 150 where id = $1`, [svc]), /default_tax_rate_check|check constraint/)
+  assert.equal(num((await q(U.rep1, `select default_price from services where id = $1`, [svc])).rows[0].default_price), 1500, 'everyone can read them')
+
+  // an invoice can be tied to an organization, contact and deal, and shows up there
+  const org = (await q(U.rep1, `insert into organizations (workspace_id, name, created_by) values ($1, 'Linked Org', $2) returning id`, [ws, U.rep1])).rows[0].id
+  const contact = (await q(U.rep1, `insert into contacts (workspace_id, first_name, last_name, organization_id, created_by) values ($1, 'Asha', 'Verma', $2, $3) returning id`, [ws, org, U.rep1])).rows[0].id
+  const deal = (await q(U.rep1, `insert into deals (workspace_id, title, organization_id, contact_id, value, currency, created_by, assigned_to) values ($1, 'Big website', $2, $3, 3000, 'USD', $4, $4) returning id`, [ws, org, contact, U.rep1])).rows[0].id
+  const link = { organization_id: org, contact_id: contact, deal_id: deal }
+  const a = await draft(U.rep1, [item({ unit_price: 1000 })], link), b = await draft(U.rep1, [item({ unit_price: 500 })], link)
+  const c = await draft(U.rep1, [item({ unit_price: 200 })], { ...link, currency: 'INR' }), skipped = await draft(U.rep1, [item({ unit_price: 99 })], link)
+  const row = await inv(U.rep1, a); assert.deepEqual([row.organization_id, row.contact_id, row.deal_id], [org, contact, deal])
+  for (const id of [a, b, c]) await q(U.mgr, `select record_invoice_send($1, 'manual')`, [id])
+  await q(U.rep1, `insert into invoice_payments (invoice_id, workspace_id, amount, created_by) values ($1, $2, 400, $3)`, [a, ws, U.rep1])
+  await q(U.mgr, `update invoices set status = 'cancelled', cancelled_reason = 'dup' where id = $1`, [b])
+  const totals = async (col, id) => (await q(U.rep1, `select record_invoice_totals($1, $2) t`, [col, id])).rows[0].t
+  for (const [col, id] of [['organization_id', org], ['contact_id', contact], ['deal_id', deal]]) {
+    const t = await totals(col, id)
+    assert.deepEqual([num(t.USD.billed), num(t.USD.paid), num(t.USD.outstanding)], [1000, 400, 600], `${col}: drafts and cancelled invoices are left out`)
+    assert.deepEqual([num(t.INR.billed), num(t.INR.paid), num(t.INR.outstanding)], [200, 0, 200], 'currencies are never added together')
+  }
+  await rejects(q(U.rep1, `select record_invoice_totals('bill_to_name; drop table invoices', $1)`, [org]), /Unknown record type/)
+  assert.equal((await q(U.rep1, `select * from invoices where deal_id = $1`, [deal])).rows.length, 4)
+  assert.equal((await inv(U.rep1, (await q(U.rep1, `select duplicate_invoice($1) id`, [a])).rows[0].id)).deal_id, deal, 'a duplicate stays linked')
+  void skipped
+})
+
+test('integration: line suggestions come from past invoices, latest price first, and respect access', async () => {
+  const mk = (u, desc, price, issue) => draft(u, [item({ description: desc, unit_price: price })], { issue_date: issue, due_date: issue })
+  await mk(U.rep1, 'Logo design package', 400, '2026-01-10'); await mk(U.rep1, 'Logo design package', 450, '2026-03-10'); await mk(U.rep1, 'Brand guidelines', 900, '2026-02-01')
+  await mk(U.rep2, 'Logo refresh (rep2 only)', 123, '2026-02-02')
+  const sug = async (u, text) => (await q(u, `select * from suggest_invoice_lines($1)`, [text])).rows
+  const logo = await sug(U.rep1, 'logo')
+  assert.equal(logo.filter((r) => r.description === 'Logo design package').length, 1, 'one suggestion per description')
+  assert.equal(num(logo.find((r) => r.description === 'Logo design package').unit_price), 450, 'the most recent price')
+  assert.ok(!logo.some((r) => /rep2 only/.test(r.description)), 'other people\'s invoices stay private')
+  assert.equal((await sug(U.rep1, 'l')).length, 0, 'needs at least two characters')
+  assert.ok((await sug(U.admin, 'logo')).some((r) => /rep2 only/.test(r.description)), 'Admin sees everything')
+  assert.ok((await sug(U.rep1, 'BRAND')).some((r) => r.description === 'Brand guidelines'), 'case-insensitive')
+})
+
+test('integration: the signature joins the company details that freeze on send', async () => {
+  await q(U.admin, `update invoice_settings set signature_url = 'https://example.com/sig.png', logo_url = 'https://example.com/logo.png'`)
+  const id = await draft(U.rep1, [item()]); await q(U.rep1, `update invoices set notes = 'touch' where id = $1`, [id])
+  assert.equal((await inv(U.rep1, id)).issuer.signature_url, 'https://example.com/sig.png')
+  await q(U.mgr, `select record_invoice_send($1, 'manual')`, [id])
+  await q(U.admin, `update invoice_settings set signature_url = 'https://example.com/other.png'`)
+  assert.equal((await inv(U.mgr, id)).issuer.signature_url, 'https://example.com/sig.png', 'a sent invoice keeps the signature it was sent with')
+})

@@ -30,7 +30,7 @@ const Item = ({ icon: Icon, children, ...rest }) => (
   </button>
 )
 
-const QUICK_ADD = [['lead', '/leads'], ['organization', '/organizations'], ['contact', '/contacts'], ['deal', '/deals'], ['task', '/tasks']]
+const QUICK_ADD = [['lead', '/leads'], ['organization', '/organizations'], ['contact', '/contacts'], ['deal', '/deals'], ['task', '/tasks'], ['invoice', '/invoices']]
 
 export default function Topbar({ onOpenMobile }) {
   const { profile, user, signOut } = useAuth()

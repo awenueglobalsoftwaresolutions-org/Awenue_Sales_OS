@@ -5,6 +5,7 @@ import { AccountSection, OrganizationSection, ProfileSection, ReferenceSection, 
 import UsersSection from './UsersSection'
 import RolesSection from './RolesSection'
 import InvoiceSettingsSection from './InvoiceSettingsSection'
+import { EmailAccountSection, EmailTemplatesSection } from './EmailSections'
 
 const TABS = [
   { key: 'profile', label: 'Profile', Section: ProfileSection },
@@ -15,6 +16,8 @@ const TABS = [
   { key: 'users', label: 'Users', Section: UsersSection, perm: 'users.view' },
   { key: 'roles', label: 'Roles & permissions', Section: RolesSection, perm: 'roles.view' },
   { key: 'invoices', label: 'Invoice settings', Section: InvoiceSettingsSection, perm: 'invoices.view' },
+  { key: 'email', label: 'Email account', Section: EmailAccountSection, perm: 'communications.view' },
+  { key: 'templates', label: 'Email templates', Section: EmailTemplatesSection, perm: 'communications.view' },
 ]
 
 export default function SettingsPage() {

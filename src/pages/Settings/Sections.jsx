@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { useFormSubmit } from '../../hooks/useFormSubmit'
 import { friendlyError } from '../../lib/errors'
-import { addService, listAllServices, removeAvatar, setServiceActive, updateOwnProfile, updateWorkspaceName, uploadAvatar } from '../../services/settings'
+import { addService, listAllServices, removeAvatar, setServiceActive, updateService, updateOwnProfile, updateWorkspaceName, uploadAvatar } from '../../services/settings'
 import { DEAL_STAGES, LEAD_SOURCES, LEAD_STATUSES } from '../../constants/options'
 import { ROLE_LABELS } from '../../constants/nav'
 import { Field, FormError } from '../../components/forms/FormParts'
@@ -95,13 +95,20 @@ export function ServicesSection() {
   const run = async (fn, msg) => { setBusy(true); try { await fn(); toast.success(msg); list.reload() } catch (e) { toast.error(friendlyError(e)) } finally { setBusy(false) } }
   const add = (e) => { e.preventDefault(); if (!name.trim()) return; run(async () => { await addService(name, (list.data?.length || 0) + 1, profile); setName('') }, 'Service added') }
   return (
-    <Card title="Services" description="The services you sell. They appear in lead and deal forms and filters. Turning one off hides it from new records; existing records keep it.">
+    <Card title="Services" description="The services you sell. They appear in lead and deal forms, filters and as suggestions on invoice lines. Add a default price and tax rate and invoices fill them in. Turning a service off hides it from new records; existing records keep it.">
       {!editable && <ReadOnlyNote />}
       {list.loading && !list.data ? <Spinner /> : list.error ? <ErrorState message={list.error} onRetry={list.reload} /> : (
         <ul className="divide-y divide-ink-100 rounded-lg border border-ink-100">
           {list.data.map((s) => (
-            <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <span className={`text-sm ${s.is_active ? '' : 'text-ink-500 line-through'}`}>{s.name}</span>
+            <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+              <span className={`min-w-[160px] flex-1 text-sm ${s.is_active ? '' : 'text-ink-500 line-through'}`}>{s.name}</span>
+              {editable ? (
+                <span className="flex items-center gap-2 text-xs text-ink-500">
+                  <label className="flex items-center gap-1">Price<input type="number" min="0" step="any" className="input !w-24 !py-1" defaultValue={s.default_price ?? ''} aria-label={`Default price for ${s.name}`}
+                    onBlur={(e) => { const v = e.target.value === '' ? null : Number(e.target.value); if (v !== (s.default_price == null ? null : Number(s.default_price))) run(() => updateService(s.id, { default_price: v }), 'Price saved') }} /></label>
+                  <label className="flex items-center gap-1">Tax %<input type="number" min="0" max="100" step="any" className="input !w-20 !py-1" defaultValue={s.default_tax_rate ?? ''} aria-label={`Default tax rate for ${s.name}`}
+                    onBlur={(e) => { const v = e.target.value === '' ? null : Number(e.target.value); if (v !== (s.default_tax_rate == null ? null : Number(s.default_tax_rate))) run(() => updateService(s.id, { default_tax_rate: v }), 'Tax rate saved') }} /></label>
+                </span>) : (s.default_price != null && <span className="text-xs text-ink-500">{Number(s.default_price).toLocaleString()}{s.default_tax_rate != null ? ` · ${s.default_tax_rate}% tax` : ''}</span>)}
               {editable ? <button className="btn-ghost !py-1 text-xs" disabled={busy} onClick={() => run(() => setServiceActive(s.id, !s.is_active), s.is_active ? 'Service turned off' : 'Service turned on')}>{s.is_active ? 'Turn off' : 'Turn on'}</button> : <Badge tone={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Off'}</Badge>}
             </li>))}
         </ul>)}

@@ -18,6 +18,9 @@ import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import ActivityTimeline from '../../components/common/ActivityTimeline'
 import RecordTasks from '../../components/common/RecordTasks'
+import RecordInvoices from '../../components/invoices/RecordInvoices'
+import RecordEmails from '../../components/email/RecordEmails'
+import { fromLead } from '../../lib/invoicePrefill'
 import LeadForm from '../../components/forms/LeadForm'
 import ConvertLeadModal from './ConvertLeadModal'
 import { supabase } from '../../lib/supabase'
@@ -96,6 +99,8 @@ export default function LeadDetail() {
         {l.notes && <div className="mt-4 border-t border-ink-100 pt-4"><p className="text-xs font-medium text-ink-500">Internal notes</p><p className="mt-1 whitespace-pre-wrap text-sm text-ink-700">{l.notes}</p></div>}
       </section>
 
+      {can('invoices.view') && <RecordInvoices column="lead_id" id={id} prefill={fromLead(l)} />}
+      {can('communications.view') && <RecordEmails column="lead_id" id={id} context={{ lead: l }} />}
       <RecordTasks column="lead_id" id={id} />
       <ActivityTimeline key={timelineKey} column="lead_id" id={id} title="Lead history" />
 

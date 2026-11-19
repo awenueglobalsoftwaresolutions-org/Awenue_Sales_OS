@@ -25,21 +25,23 @@ export default function InvoiceSettingsSection() {
   const { profile, can } = useAuth()
   const editable = can('settings.manage')
   const settings = useFetch(getInvoiceSettings, [])
-  const fileInput = useRef(null)
-  const [logoBusy, setLogoBusy] = useState(false)
-  const uploadLogo = async (file) => {
+  const logoInput = useRef(null)
+  const sigInput = useRef(null)
+  const [busy, setBusy] = useState('')
+  const upload = async (kind, file) => {
     const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[file.type]
     if (!ext) return toast.error('Use a PNG, JPEG or WebP image.')
-    if (file.size > 1048576) return toast.error('The logo can be at most 1 MB.')
-    setLogoBusy(true)
+    if (file.size > 1048576) return toast.error('The image can be at most 1 MB.')
+    setBusy(kind)
     try {
-      const path = `${profile.workspace_id}/logo-${Date.now()}.${ext}`
+      const path = `${profile.workspace_id}/${kind}-${Date.now()}.${ext}`
       const up = await supabase.storage.from('branding').upload(path, file, { contentType: file.type, cacheControl: '31536000' })
       if (up.error) throw up.error
-      await upsertInvoiceSettings({ logo_url: supabase.storage.from('branding').getPublicUrl(path).data.publicUrl }, profile.workspace_id)
-      toast.success('Logo updated'); settings.reload()
-    } catch (e) { toast.error(friendlyError(e)) } finally { setLogoBusy(false) }
+      await upsertInvoiceSettings({ [`${kind}_url`]: supabase.storage.from('branding').getPublicUrl(path).data.publicUrl }, profile.workspace_id)
+      toast.success(kind === 'logo' ? 'Logo updated' : 'Signature updated'); settings.reload()
+    } catch (e) { toast.error(friendlyError(e)) } finally { setBusy('') }
   }
+  const clear = async (kind) => { setBusy(kind); try { await upsertInvoiceSettings({ [`${kind}_url`]: null }, profile.workspace_id); settings.reload() } catch (e) { toast.error(friendlyError(e)) } finally { setBusy('') } }
   const form = useForm({ resolver: zodResolver(schema), defaultValues: { company_name: '', address: '', email: '', phone: '', website: '', tax_id: '', default_currency: 'USD', default_tax_rate: 0, default_due_days: 14, number_prefix: 'INV', payment_instructions: '', terms: '' } })
   useEffect(() => { if (settings.data) form.reset(settings.data) }, [settings.data])
   const { submit, formError } = useFormSubmit(form, async (v) => {
@@ -51,9 +53,18 @@ export default function InvoiceSettingsSection() {
       {!editable && <p className="mb-3 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">You can view these but not change them.</p>}
       <form onSubmit={submit} noValidate>
         <FormError message={formError} />
-        <div className="mb-4 flex items-center gap-4">
-          {settings.data?.logo_url ? <img src={settings.data.logo_url} alt="Company logo" className="h-14 max-w-[160px] rounded border border-ink-100 object-contain p-1" /> : <div className="grid h-14 w-28 place-items-center rounded border border-dashed border-ink-300 text-xs text-ink-500">No logo</div>}
-          {editable && <><button type="button" className="btn-ghost border border-ink-300" disabled={logoBusy} onClick={() => fileInput.current?.click()}>{logoBusy ? 'Uploading…' : 'Upload logo'}</button><input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) uploadLogo(f) }} /></>}
+        <div className="mb-5 grid gap-4 sm:grid-cols-2">
+          {[['logo', 'Logo', logoInput, 'The Awenue logo from your invoice design is used until you upload another.', '/brand/awenue-invoice-logo.jpg'], ['signature', 'Signature', sigInput, 'Printed beside the payment info. A PNG with a transparent background looks best.', null]].map(([kind, label, ref, hint, fallback]) => {
+            const url = settings.data?.[`${kind}_url`]
+            return (
+              <div key={kind} className="rounded-lg border border-ink-100 p-3">
+                <p className="text-sm font-medium">{label}</p>
+                <div className="my-2 grid h-20 place-items-center rounded bg-ink-50">{url || fallback ? <img src={url || fallback} alt={`${label} preview`} className="max-h-16 max-w-full object-contain" /> : <span className="text-xs text-ink-500">None</span>}</div>
+                <p className="mb-2 text-xs text-ink-500">{hint}</p>
+                {editable && <div className="flex gap-2"><button type="button" className="btn-ghost border border-ink-300 !py-1.5 text-xs" disabled={busy === kind} onClick={() => ref.current?.click()}>{busy === kind ? 'Working…' : `Upload ${label.toLowerCase()}`}</button>{url && <button type="button" className="btn-ghost !py-1.5 text-xs" disabled={busy === kind} onClick={() => clear(kind)}>Remove</button>}</div>}
+                <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) upload(kind, f) }} />
+              </div>)
+          })}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company name" className="sm:col-span-2"><input className="input" disabled={!editable} {...form.register('company_name')} /></Field>

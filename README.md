@@ -1,6 +1,6 @@
 # Awenue Sales OS — v1.0 MVP
 
-**Status:** Phase 1 (setup, schema, RLS, auth, shell) and Phase 2 (organizations, contacts, leads, org file manager) Phase 3, 4 and enhancement steps 1 (RBAC) and 2 (audit, invoices) are done.
+**Status:** Phase 1 (setup, schema, RLS, auth, shell) and Phase 2 (organizations, contacts, leads, org file manager) Phase 3, 4 and enhancement steps 1 (RBAC), 2 (audit, invoices), 3 (invoice design and CRM links) and 4 (email) are done.
 
 ## Setup
 1. `npm install`
@@ -14,6 +14,8 @@
    - `supabase/migrations/0007_rbac.sql` (roles & permissions, richer profiles, safe sign-up, avatars)
    - `supabase/migrations/0008_audit.sql` (append-only audit trail, IP/device capture, report queries, retention)
    - `supabase/migrations/0009_invoices.sql` (invoice management, finalization rules, payments, history)
+   - `supabase/migrations/0010_invoice_integration.sql` (service prices, deal link, signature, line suggestions, per-record totals)
+   - `supabase/migrations/0011_email.sql` (Gmail accounts, email templates, sent-email records linked to CRM records)
 3. `cp .env.example .env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (anon key only).
 4. Supabase > Authentication > URL Configuration: set Site URL to `http://localhost:5173` and add `http://localhost:5173/reset-password` to Redirect URLs.
 5. Supabase > Authentication > Users > Add user (email + password, tick "Auto confirm").
@@ -116,3 +118,34 @@ Limits: 50 MB per file (the Workers free plan allows up to 100 MB request bodies
 - [ ] Duplicate an invoice; the copy starts as a draft with today's dates
 - [ ] Settings > Invoice settings: change the number prefix, create a new invoice, confirm the prefix changed
 - [ ] The audit trail on Reports shows all of the above
+
+## Invoice design and CRM connections checklist
+- [ ] Run `0010_invoice_integration.sql`
+- [ ] Create an invoice and download the PDF: it follows the black-and-white design (Poppins type, black table header and grand-total bar). `npm run sample:invoice` writes `invoice-sample.pdf` from the template for comparison
+- [ ] Settings > Invoice settings: upload a signature (PNG with a transparent background works best) and optionally a logo; the Awenue logo from the design is used until you upload one
+- [ ] Settings > Services: give a service a default price and tax rate
+- [ ] New invoice > Bill to: type two letters of a company, contact or lead; pick one and the name, email, phone and address fill in and the links appear as chips
+- [ ] On a line item, start typing a service name; picking it fills the price and tax. Type something you have invoiced before and it suggests the last price
+- [ ] Open the organization the invoice is linked to: the **Invoices** tab lists it with billed / paid / outstanding totals. The same list is on its contact, lead and deal pages
+- [ ] On an organization, contact, lead or deal, use **New invoice** and see the details pre-filled (a deal brings its service and value)
+- [ ] On an invoice with an organization: **Save to files** puts the PDF in the organization's Files > Invoices folder
+- [ ] **Preview** opens the PDF before you finalize; a draft shows a DRAFT tag, a paid one PAID, an overdue one OVERDUE
+
+Fonts: Poppins and Public Sans are open-source (SIL Open Font License; licenses in `public/fonts`). The PDF supports Latin text, and the symbols for USD, EUR, GBP and INR; other currencies print their code, for example AED 50.00.
+
+## Email checklist (Gmail, per person)
+Set up the Google connection first (see docs/DEPLOYMENT.md > Gmail setup).
+- [ ] Run `0011_email.sql`; redeploy the Worker (`cd worker && npx wrangler deploy`) after adding `GOOGLE_CLIENT_SECRET` and `TOKEN_ENCRYPTION_KEY`
+- [ ] Settings > Email account: Connect Gmail, approve the Google prompt; your address shows as Connected
+- [ ] Add a signature and save it
+- [ ] Settings > Email templates: create a shared template with fields such as {{contact.first_name}} and {{invoice.number}}; the preview fills in sample data
+- [ ] Contact page > Compose email: the To field is filled from the contact; insert a field from the dropdown; Preview shows the result; Send
+- [ ] The sent email appears in the contact's Emails section and in its timeline, with the sender's address
+- [ ] Lead, organization and deal pages: send an email; it appears on that record and on the others it is linked to
+- [ ] Invoice page > Send invoice by email: the PDF is attached and the invoice history shows "Emailed"
+- [ ] Tasks & Follow-ups: use the mail icon on a task; the follow-up sends from your address and appears on the linked contact
+- [ ] Sign in as a second person: their mail goes from their own Gmail address, and they cannot see yours unless they can see the record
+- [ ] Empty fields block sending with a message naming them; unknown fields are reported too
+- [ ] Disconnect Gmail in Settings; sending is refused until you reconnect
+
+Limits to know: replies arrive in each person's normal Gmail (the app can't read the inbox without a much stricter Google review); read and open tracking aren't available from Gmail; the hourly limit is 200 emails per person, and Gmail's own daily limits also apply.
