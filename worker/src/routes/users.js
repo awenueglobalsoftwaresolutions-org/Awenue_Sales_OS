@@ -69,11 +69,17 @@ export async function removeUser(request, env) {
   mustUuid(userId, 'user')
   if (userId === me.id) throw new HttpError(400, 'You can\'t remove your own account.')
 
-  const tr = await ctx.sb(`profiles?id=eq.${userId}&select=id,role,email`)
+  const tr = await ctx.sb(`profiles?id=eq.${userId}&select=id,role,email,job_title`)
   const [target] = tr.ok ? await tr.json() : []
   if (!target) throw new HttpError(404, 'User not found.')
-  if (target.email?.toLowerCase() === 'codewithsushil7236@gmail.com') {
-    throw new HttpError(403, 'The Root Founder and Permanent Super Admin account is protected and cannot be removed by anyone.')
+
+  const founderEmail = (env.FOUNDER_EMAIL || '').toLowerCase().trim()
+  const isProtectedFounder = Boolean(
+    (target.role === 'super_admin' && /founder|cto/i.test(target.job_title || '')) ||
+    (founderEmail && target.email?.toLowerCase() === founderEmail)
+  )
+  if (isProtectedFounder) {
+    throw new HttpError(403, 'The Founder and CTO account is permanently protected and cannot be removed.')
   }
   if (target.role === 'super_admin' && me.role !== 'super_admin') throw new HttpError(403, 'Only a Super Admin can remove a Super Admin.')
 
