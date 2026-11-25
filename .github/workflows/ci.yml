@@ -146,9 +146,9 @@ jobs:
       - name: Compile Production Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://vpbkjtrdsqjyyiypozod.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci_build' }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.awenueglobalsoftwaresolutions.in' }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Verify Build Artifacts
         run: |
