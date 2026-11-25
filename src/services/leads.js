@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { clean, pageRange, searchFilter, cleanTerm, mustAffect } from '../lib/query'
 import { createActivity } from './activities'
+import { syncLeadStatusToWebsite } from './websiteSync'
 import { LEAD_STATUSES, labelOf } from '../constants/options'
 
 export const LEAD_FIELDS = ['first_name', 'last_name', 'job_title', 'email', 'phone', 'organization_id', 'website', 'industry', 'country', 'state', 'city',
@@ -63,7 +64,41 @@ export async function deleteLead(id) {
   await mustAffect(supabase.from('leads').delete().eq('id', id))
 }
 
+export async function listLeadsForPipeline(filters = {}) {
+  let q = supabase.from('leads').select(SELECT)
+  if (filters.status) q = q.eq('status', filters.status)
+  if (filters.source && filters.source !== 'all') {
+    if (filters.source === 'website_project') {
+      q = q.eq('source', 'website').not('notes', 'ilike', '%[Website Contact%')
+    } else if (filters.source === 'website_contact') {
+      q = q.eq('source', 'website').ilike('notes', '%[Website Contact%')
+    } else {
+      q = q.eq('source', filters.source)
+    }
+  }
+  if (filters.assigned_to) q = q.eq('assigned_to', filters.assigned_to)
+  if (filters.interested_service) q = q.eq('interested_service', filters.interested_service)
+  if (filters.search) q = q.or(searchFilter(filters.search, ['first_name', 'last_name', 'email', 'phone', 'notes']))
+  const { data, error } = await q.order('updated_at', { ascending: false }).limit(1000)
+  if (error) throw error
+  return data
+}
+
+export async function moveLead(lead, newStatus, profile) {
+  if (lead.status === newStatus) return
+  await mustAffect(supabase.from('leads').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', lead.id))
+  await logStatusChange(lead, newStatus, profile)
+  if (lead.source === 'website') {
+    syncLeadStatusToWebsite(lead, newStatus).catch(() => {})
+  }
+}
+
 export async function convertLead({ leadId, title, value, currency }) {
+  // Ensure lead is in qualified status before convert_lead RPC check
+  const { data: currentLead } = await supabase.from('leads').select('status').eq('id', leadId).maybeSingle()
+  if (currentLead && currentLead.status !== 'qualified' && currentLead.status !== 'converted') {
+    await supabase.from('leads').update({ status: 'qualified', updated_at: new Date().toISOString() }).eq('id', leadId)
+  }
   const { data, error } = await supabase.rpc('convert_lead', {
     p_lead_id: leadId, p_deal_title: title, p_deal_value: value === '' || value == null ? null : Number(value), p_currency: currency,
   })

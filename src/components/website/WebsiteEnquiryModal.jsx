@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Building2, Calendar, ExternalLink, Globe, Mail, Phone, Save, Tag } from 'lucide-react'
+import { Building2, Calendar, ExternalLink, Globe, Mail, Phone, Save, Tag, CheckCircle2, Clock, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../common/Modal'
 import Badge from '../common/Badge'
 import { fmtDateTime, safeExternalUrl } from '../../lib/format'
@@ -8,8 +9,8 @@ import {
   ENQUIRY_STATUSES,
   WEBSITE_STATUS_TONE,
   formatWebsiteStatus,
-  updateWebsiteEnquiry,
 } from '../../services/website'
+import { updateWebsiteQueryDirectly } from '../../services/websiteSync'
 
 function DetailBlock({ label, value }) {
   if (!value) return null
@@ -22,6 +23,7 @@ function DetailBlock({ label, value }) {
 }
 
 export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, onClose, onSaved }) {
+  const { profile } = useAuth()
   const [status, setStatus] = useState('NEW')
   const [assignedTo, setAssignedTo] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
@@ -40,23 +42,35 @@ export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, o
   const services = Array.isArray(enquiry.selectedServices) ? enquiry.selectedServices : []
   const subServices = Array.isArray(enquiry.selectedSubServices) ? enquiry.selectedSubServices : []
 
-  const save = async (e) => {
-    e.preventDefault()
+  const persistUpdate = async (nextStatus, closeAfter = true) => {
     setSaving(true)
     try {
-      const res = await updateWebsiteEnquiry(enquiry.id, {
-        status,
+      const payload = {
+        status: nextStatus,
         assignedTo: assignedTo.trim() || null,
         internalNotes: internalNotes.trim() || null,
-      })
-      toast.success('Website lead updated')
-      onSaved(res?.data || { ...enquiry, status, assignedTo: assignedTo.trim(), internalNotes: internalNotes.trim(), updatedAt: new Date().toISOString() })
-      onClose()
+      }
+      await updateWebsiteQueryDirectly({
+        type: 'enquiries',
+        item: enquiry,
+        status: nextStatus,
+        assignedTo: payload.assignedTo,
+        internalNotes: payload.internalNotes,
+      }, profile)
+      setStatus(nextStatus)
+      toast.success(`Project enquiry marked as ${formatWebsiteStatus(nextStatus)} (Saved to CRM DB)`)
+      onSaved({ ...enquiry, ...payload, updatedAt: new Date().toISOString() })
+      if (closeAfter) onClose()
     } catch (err) {
-      toast.error(err?.message || 'Could not update lead.')
+      toast.error(err?.message || 'Could not update enquiry.')
     } finally {
       setSaving(false)
     }
+  }
+
+  const save = async (e) => {
+    e.preventDefault()
+    await persistUpdate(status, true)
   }
 
   return (

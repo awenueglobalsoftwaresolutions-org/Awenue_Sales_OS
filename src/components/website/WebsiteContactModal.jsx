@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Calendar, CheckCircle2, Clock, Eye, Mail, Phone, Save } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../common/Modal'
 import Badge from '../common/Badge'
 import { fmtDateTime } from '../../lib/format'
@@ -8,10 +9,11 @@ import {
   CONTACT_STATUSES,
   WEBSITE_STATUS_TONE,
   formatWebsiteStatus,
-  updateWebsiteContactMessage,
 } from '../../services/website'
+import { updateWebsiteQueryDirectly } from '../../services/websiteSync'
 
 export default function WebsiteContactModal({ message, profiles = [], canEdit, onClose, onSaved }) {
+  const { profile } = useAuth()
   const [status, setStatus] = useState('NEW')
   const [assignedTo, setAssignedTo] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
@@ -36,10 +38,16 @@ export default function WebsiteContactModal({ message, profiles = [], canEdit, o
         assignedTo: assignedTo.trim() || null,
         internalNotes: internalNotes.trim() || null,
       }
-      const res = await updateWebsiteContactMessage(message.id, payload)
+      await updateWebsiteQueryDirectly({
+        type: 'contacts',
+        item: message,
+        status: nextStatus,
+        assignedTo: payload.assignedTo,
+        internalNotes: payload.internalNotes,
+      }, profile)
       setStatus(nextStatus)
-      toast.success(`Message marked as ${formatWebsiteStatus(nextStatus)}`)
-      onSaved(res?.data || { ...message, ...payload, updatedAt: new Date().toISOString() })
+      toast.success(`Message marked as ${formatWebsiteStatus(nextStatus)} (Saved to CRM DB)`)
+      onSaved({ ...message, ...payload, updatedAt: new Date().toISOString() })
       if (closeAfter) onClose()
     } catch (err) {
       toast.error(err?.message || 'Could not update contact message.')

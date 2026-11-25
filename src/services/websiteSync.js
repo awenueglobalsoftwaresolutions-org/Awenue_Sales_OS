@@ -1,5 +1,24 @@
 import { supabase } from '../lib/supabase'
-import { syncWebsiteData, WEB_TO_CRM_STATUS } from './website'
+import { syncWebsiteData, updateWebsiteEnquiry, updateWebsiteContactMessage, WEB_TO_CRM_STATUS } from './website'
+import { createActivity } from './activities'
+
+export const CRM_TO_WEB_STATUS = {
+  new: 'NEW',
+  contacted: 'CONTACTED',
+  qualified: 'IN_REVIEW',
+  converted: 'CONVERTED',
+  unqualified: 'ARCHIVED',
+  lost: 'CLOSED',
+}
+
+export const CRM_TO_MSG_STATUS = {
+  new: 'NEW',
+  contacted: 'IN_PROGRESS',
+  qualified: 'IN_PROGRESS',
+  converted: 'RESOLVED',
+  unqualified: 'ARCHIVED',
+  lost: 'ARCHIVED',
+}
 
 /**
  * Fetches website enquiries and contact messages from the main website API,
@@ -35,7 +54,7 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
     const primaryService = Array.isArray(e.selectedServices) ? e.selectedServices[0] : (e.selectedServices || '')
 
     const noteLines = [
-      e.enquiryNumber ? `[Website Enquiry #${e.enquiryNumber}]` : '[Website Project Enquiry]',
+      e.enquiryNumber ? `[Website Enquiry #${e.enquiryNumber}] [External-ID: ${e.id}]` : `[Website Project Enquiry] [External-ID: ${e.id}]`,
       e.companyName ? `Company: ${e.companyName}` : null,
       e.websiteUrl ? `Website: ${e.websiteUrl}` : null,
       Array.isArray(e.selectedServices) && e.selectedServices.length ? `Selected Services: ${e.selectedServices.join(', ')}` : null,
@@ -142,7 +161,7 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
     const fullPhone = [m.countryCode, m.phone].filter(Boolean).join(' ')
 
     const msgNotes = [
-      m.messageNumber ? `[Website Contact Query #${m.messageNumber}]` : '[Website Contact Message]',
+      m.messageNumber ? `[Website Contact Query #${m.messageNumber}] [External-ID: ${m.id}]` : `[Website Contact Message] [External-ID: ${m.id}]`,
       m.subject ? `Subject: ${m.subject}` : null,
       m.message ? `Message:\n${m.message}` : null,
       m.internalNotes ? `Internal Notes: ${m.internalNotes}` : null,
@@ -219,3 +238,128 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
 
   return { ...websiteData, stats }
 }
+
+/**
+ * Directly updates status in Supabase database (`leads` + `website_enquiries` / `website_contact_messages`)
+ * and also synchronizes back with the Main Website API via the PATCH proxy.
+ */
+export async function updateWebsiteQueryDirectly({ type = 'contacts', item, status, assignedTo, internalNotes }, profile) {
+  if (!item) return { success: false }
+  const workspaceId = profile?.workspace_id
+  const email = item.email?.trim()?.toLowerCase()
+  const crmStatus = type === 'contacts'
+    ? (status === 'RESOLVED' ? 'converted' : status === 'IN_PROGRESS' ? 'contacted' : status === 'ARCHIVED' ? 'unqualified' : 'new')
+    : (WEB_TO_CRM_STATUS[status] || 'contacted')
+
+  let updatedLead = null
+
+  // 1. Direct Supabase update to `public.leads`
+  if (workspaceId && (item.lead_id || email)) {
+    try {
+      let leadQuery = supabase.from('leads').select('id, status, notes, first_name, last_name').eq('workspace_id', workspaceId)
+      if (item.lead_id) {
+        leadQuery = leadQuery.eq('id', item.lead_id)
+      } else {
+        leadQuery = leadQuery.ilike('email', email)
+      }
+      const { data: matchedLead } = await leadQuery.maybeSingle()
+
+      if (matchedLead) {
+        const updateData = {
+          status: crmStatus,
+          updated_at: new Date().toISOString(),
+        }
+        if (internalNotes) {
+          updateData.notes = matchedLead.notes
+            ? `${matchedLead.notes}\n\n[Status Update (${status})]: ${internalNotes}`
+            : `[Status Update (${status})]: ${internalNotes}`
+        }
+        const { data: leadSaved } = await supabase.from('leads').update(updateData).eq('id', matchedLead.id).select().maybeSingle()
+        updatedLead = leadSaved || matchedLead
+
+        if (profile) {
+          await createActivity({
+            activity_type: 'status_update',
+            title: `Website query status set to ${status}`,
+            description: `CRM lead status set to ${crmStatus}. ${internalNotes ? `Notes: ${internalNotes}` : ''}`.trim(),
+          }, 'lead_id', matchedLead.id, profile).catch(() => {})
+        }
+      }
+    } catch (err) {
+      console.warn('Direct leads update notice:', err?.message)
+    }
+  }
+
+  // 2. Direct Supabase update to `website_contact_messages` or `website_enquiries` table if present
+  try {
+    const table = type === 'contacts' ? 'website_contact_messages' : 'website_enquiries'
+    await supabase.from(table)
+      .update({
+        status,
+        assigned_to: assignedTo || null,
+        internal_notes: internalNotes || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('external_id', String(item.id))
+  } catch {
+    // Ignore if table not created
+  }
+
+  // 3. Best-effort update to Main Website API
+  let apiRes = null
+  try {
+    if (type === 'contacts') {
+      apiRes = await updateWebsiteContactMessage(item.id, {
+        status,
+        assignedTo: assignedTo || null,
+        internalNotes: internalNotes || null,
+      })
+    } else {
+      apiRes = await updateWebsiteEnquiry(item.id, {
+        status,
+        assignedTo: assignedTo || null,
+        internalNotes: internalNotes || null,
+      })
+    }
+  } catch (err) {
+    console.warn('Website API proxy update notice:', err?.message)
+  }
+
+  return { success: true, crmStatus, updatedLead, apiRes }
+}
+
+/**
+ * Propagate a CRM lead status change back to the Main Website API
+ * and to the local website tables if external ID is known.
+ */
+export async function syncLeadStatusToWebsite(lead, newStatus) {
+  if (!lead || lead.source !== 'website') return
+
+  const isContact = lead.notes?.includes('[Website Contact')
+  const extMatch = lead.notes?.match(/\[External-ID:\s*([^\]]+)\]/)
+  const externalId = extMatch ? extMatch[1].trim() : null
+
+  const targetStatus = isContact
+    ? (CRM_TO_MSG_STATUS[newStatus] || 'IN_PROGRESS')
+    : (CRM_TO_WEB_STATUS[newStatus] || 'CONTACTED')
+
+  // Direct DB update to website table if externalId exists
+  if (externalId) {
+    try {
+      const table = isContact ? 'website_contact_messages' : 'website_enquiries'
+      await supabase.from(table).update({ status: targetStatus, updated_at: new Date().toISOString() }).eq('external_id', externalId)
+    } catch {}
+
+    // Call API proxy
+    try {
+      if (isContact) {
+        await updateWebsiteContactMessage(externalId, { status: targetStatus })
+      } else {
+        await updateWebsiteEnquiry(externalId, { status: targetStatus })
+      }
+    } catch (err) {
+      console.warn('Background sync to website API failed:', err?.message)
+    }
+  }
+}
+
