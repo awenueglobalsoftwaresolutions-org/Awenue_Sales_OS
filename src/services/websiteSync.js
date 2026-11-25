@@ -21,6 +21,35 @@ export const CRM_TO_MSG_STATUS = {
 }
 
 /**
+ * Detects if an enquiry or message is a test/dummy case so it never pollutes the CRM.
+ */
+export function isTestRecord(item) {
+  if (!item) return false
+  const email = (item.email || '').toLowerCase().trim()
+  const name = (item.fullName || item.full_name || `${item.first_name || ''} ${item.last_name || ''}`).toLowerCase().trim()
+  const subject = (item.subject || '').toLowerCase()
+  const message = (item.message || item.projectScope || item.project_scope || item.projectDescription || '').toLowerCase()
+
+  return (
+    email.endsWith('@example.com') ||
+    email.includes('test.client') ||
+    email.includes('test.project') ||
+    email.includes('test.contact') ||
+    email.startsWith('test.') ||
+    email.startsWith('livetest@') ||
+    email.includes('antigravity') ||
+    name.includes('test lead') ||
+    name.includes('test client') ||
+    name.includes('test contact') ||
+    name.includes('antigravity test') ||
+    name.includes('live test') ||
+    subject.includes('testing webhook') ||
+    message.includes('testing live contact form') ||
+    message.includes('testing webhook')
+  )
+}
+
+/**
  * Reads website enquiries and contact messages directly from the Supabase database.
  */
 export async function loadWebsiteQueriesFromDatabase(workspaceId) {
@@ -31,7 +60,9 @@ export async function loadWebsiteQueriesFromDatabase(workspaceId) {
       supabase.from('website_enquiries').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }),
     ])
 
-    const contactMessages = (cRes.data || []).map((r) => ({
+    const contactMessages = (cRes.data || [])
+      .filter((r) => !isTestRecord(r))
+      .map((r) => ({
       id: r.external_id || r.id,
       db_id: r.id,
       messageNumber: r.message_number,
@@ -49,7 +80,9 @@ export async function loadWebsiteQueriesFromDatabase(workspaceId) {
       updatedAt: r.updated_at,
     }))
 
-    const projectEnquiries = (eRes.data || []).map((r) => ({
+    const projectEnquiries = (eRes.data || [])
+      .filter((r) => !isTestRecord(r))
+      .map((r) => ({
       id: r.external_id || r.id,
       db_id: r.id,
       enquiryNumber: r.enquiry_number,
@@ -115,10 +148,10 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
     }
   }
 
-  const enquiries = websiteData?.projectEnquiries || []
-  const contacts = websiteData?.contactMessages || []
+  const enquiries = (websiteData?.projectEnquiries || []).filter((e) => !isTestRecord(e))
+  const contacts = (websiteData?.contactMessages || []).filter((m) => !isTestRecord(m))
 
-  if (!workspaceId) return websiteData
+  if (!workspaceId) return { ...websiteData, projectEnquiries: enquiries, contactMessages: contacts }
 
   const stats = {
     syncedAt: new Date().toISOString(),
@@ -132,6 +165,7 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
   // 2. Persist Project Enquiries directly into Supabase `leads` & `website_enquiries`
   for (const e of enquiries) {
     if (!e.email && !e.fullName) continue
+    if (isTestRecord(e)) continue
     const email = e.email?.trim()?.toLowerCase() || null
     const nameParts = (e.fullName || 'Website Lead').trim().split(/\s+/)
     const firstName = nameParts[0] || 'Website'
@@ -240,6 +274,7 @@ export async function syncAndPersistWebsiteData(profile, { type = 'all', limit =
   // 3. Persist Contact Messages directly into `leads` & `website_contact_messages`
   for (const m of contacts) {
     if (!m.email && !m.fullName) continue
+    if (isTestRecord(m)) continue
     const email = m.email?.trim()?.toLowerCase() || null
     const nameParts = (m.fullName || 'Website Contact').trim().split(/\s+/)
     const firstName = nameParts[0] || 'Website'

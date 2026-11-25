@@ -1,46 +1,25 @@
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth } from 'date-fns'
 import { OPEN_TASK_STATUSES } from '../constants/options'
-import { WEB_TO_CRM_STATUS, normalizeWebsiteEnquiry, syncWebsiteData } from './website'
-
-async function fetchWebsiteEnquiriesSafe() {
-  try {
-    const res = await syncWebsiteData({ type: 'enquiries', limit: 200 })
-    return res?.projectEnquiries || []
-  } catch {
-    return []
-  }
-}
 
 export async function getDashboardStats() {
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  const [{ data, error }, webEnquiries] = await Promise.all([
-    supabase.rpc('dashboard_stats', { p_today: format(new Date(), 'yyyy-MM-dd'), p_month_start: monthStart }),
-    fetchWebsiteEnquiriesSafe(),
-  ])
+  const { data, error } = await supabase.rpc('dashboard_stats', {
+    p_today: format(new Date(), 'yyyy-MM-dd'),
+    p_month_start: monthStart,
+  })
   if (error) throw error
-  if (!webEnquiries.length) return data
-
-  const monthStartIso = startOfMonth(new Date()).toISOString()
-  const webNewMonth = webEnquiries.filter((e) => (e.createdAt || '') >= monthStartIso).length
-  const webQualified = webEnquiries.filter((e) => (WEB_TO_CRM_STATUS[e.status] || 'new') === 'qualified').length
-  return {
-    ...data,
-    total_leads: (data?.total_leads ?? 0) + webEnquiries.length,
-    new_leads_month: (data?.new_leads_month ?? 0) + webNewMonth,
-    qualified_leads: (data?.qualified_leads ?? 0) + webQualified,
-  }
+  return data
 }
 
 export async function listRecentLeads() {
-  const [{ data, error }, webEnquiries] = await Promise.all([
-    supabase.from('leads').select('id,lead_number,first_name,last_name,status,created_at').order('created_at', { ascending: false }).limit(6),
-    fetchWebsiteEnquiriesSafe(),
-  ])
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id,lead_number,first_name,last_name,status,created_at')
+    .order('created_at', { ascending: false })
+    .limit(6)
   if (error) throw error
-  const combined = [...(data || []), ...webEnquiries.map(normalizeWebsiteEnquiry)]
-  combined.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-  return combined.slice(0, 6)
+  return data || []
 }
 
 export async function listUpcomingTasks() {

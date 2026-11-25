@@ -8,7 +8,7 @@ import { useListQuery } from '../../hooks/useListQuery'
 import { createLead, deleteLead, getLeadMetrics, listLeads, updateLead } from '../../services/leads'
 import { listProfiles, listServiceNames } from '../../services/lookups'
 import { LEAD_SOURCES, LEAD_STATUSES, PRIORITY_TONE, PRIORITIES, STATUS_TONE, labelOf } from '../../constants/options'
-import { fmtDate, fmtDateTime, fullName, leadCode } from '../../lib/format'
+import { fmtDate, fullName, leadCode } from '../../lib/format'
 import PageHeader from '../../components/common/PageHeader'
 import CsvTools from '../../components/csv/CsvTools'
 import { FilterBar, FilterSelect } from '../../components/common/FilterBar'
@@ -22,9 +22,7 @@ import RowActions from '../../components/common/RowActions'
 import Badge from '../../components/common/Badge'
 import Avatar from '../../components/common/Avatar'
 import LeadForm from '../../components/forms/LeadForm'
-import { useWebsiteSync } from '../../components/website/SyncControls'
-import WebsiteEnquiryModal from '../../components/website/WebsiteEnquiryModal'
-import { WEBSITE_STATUS_TONE, formatWebsiteStatus, normalizeWebsiteEnquiry } from '../../services/website'
+import { syncAndPersistWebsiteData } from '../../services/websiteSync'
 
 const INITIAL_SORT = { key: 'created_at', dir: 'desc' }
 
@@ -70,15 +68,28 @@ export default function LeadsPage() {
   const list = useListQuery(listLeads, { initialSort: INITIAL_SORT })
   const metrics = useFetch(getLeadMetrics, [])
   const services = useFetch(listServiceNames, [])
-  const profiles = useFetch(listProfiles, [])
-  const webSync = useWebsiteSync('enquiries')
   const [editing, setEditing] = useState(null)
-  const [editingWeb, setEditingWeb] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [syncingWeb, setSyncingWeb] = useState(false)
 
   useEffect(() => { if (params.get('new')) { setEditing({}); setParams({}, { replace: true }) } }, [params, setParams])
 
-  const reloadAll = () => { list.reload(); metrics.reload(); webSync.syncNow() }
+  const reloadAll = () => { list.reload(); metrics.reload() }
+
+  const handleWebsiteSync = async () => {
+    setSyncingWeb(true)
+    try {
+      const res = await syncAndPersistWebsiteData(profile, { type: 'enquiries' })
+      const created = res?.stats?.leadsCreated || 0
+      const updated = res?.stats?.leadsUpdated || 0
+      toast.success(`Website inquiries synced: ${created} new, ${updated} updated in database`)
+      reloadAll()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to sync website inquiries.')
+    } finally {
+      setSyncingWeb(false)
+    }
+  }
 
   const save = async (values) => {
     if (editing?.id) await updateLead(editing, values, profile)
@@ -88,81 +99,23 @@ export default function LeadsPage() {
   }
   const remove = async () => { await deleteLead(deleting.id); toast.success('Lead deleted'); setDeleting(null); reloadAll() }
 
-  const webEnquiries = webSync.data?.projectEnquiries || []
-  const normalizedWebLeads = useMemo(() => webEnquiries.map(normalizeWebsiteEnquiry), [webEnquiries])
-
-  const filteredWebLeads = useMemo(() => {
-    const q = (list.search || '').trim().toLowerCase()
-    const { status, source, interested_service, country } = list.filters
-    if (source && source !== 'website') return []
-    if (country) return []
-    return normalizedWebLeads.filter((l) => {
-      if (status && l.status !== status) return false
-      if (interested_service && !(l._raw.selectedServices || []).includes(interested_service)) return false
-      if (q) {
-        const hay = [l.first_name, l.email, l.phone, l.lead_number, l.organization?.name, l._raw.projectName]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        if (!hay.includes(q)) return false
-      }
-      return true
-    })
-  }, [normalizedWebLeads, list.search, list.filters])
-
-  useEffect(() => {
-    if (webSync.data?.stats?.leadsCreated || webSync.data?.stats?.leadsUpdated) {
-      list.reload()
-      metrics.reload()
-    }
-  }, [webSync.data])
-
-  const combinedRows = useMemo(() => {
-    const existingEmails = new Set(list.rows.map((r) => r.email?.toLowerCase()).filter(Boolean))
-    const unpersistedWebLeads = filteredWebLeads.filter((l) => !existingEmails.has(l.email?.toLowerCase()))
-    const base = list.page === 1 ? [...unpersistedWebLeads, ...list.rows] : list.rows
-    const dir = list.sort.dir === 'asc' ? 1 : -1
-    return [...base].sort((a, b) => {
-      const av = a[list.sort.key] ?? ''
-      const bv = b[list.sort.key] ?? ''
-      if (list.sort.key === 'priority_rank') return ((av || 0) - (bv || 0)) * dir
-      return String(av).localeCompare(String(bv)) * dir
-    })
-  }, [filteredWebLeads, list.rows, list.page, list.sort])
-
   const baseMetrics = metrics.data || {}
   const m = useMemo(() => {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-    const webTotal = normalizedWebLeads.length
-    const webNewMonth = normalizedWebLeads.filter((l) => (l.created_at || '') >= monthStart).length
-    const webQualified = normalizedWebLeads.filter((l) => l.status === 'qualified').length
-    const webConverted = normalizedWebLeads.filter((l) => l.status === 'converted').length
     return {
-      total: (baseMetrics.total ?? 0) + webTotal,
-      newMonth: (baseMetrics.newMonth ?? 0) + webNewMonth,
-      qualified: (baseMetrics.qualified ?? 0) + webQualified,
-      converted: (baseMetrics.converted ?? 0) + webConverted,
+      total: baseMetrics.total ?? 0,
+      newMonth: baseMetrics.newMonth ?? 0,
+      qualified: baseMetrics.qualified ?? 0,
+      converted: baseMetrics.converted ?? 0,
       followups: baseMetrics.followups ?? 0,
     }
-  }, [baseMetrics, normalizedWebLeads])
+  }, [baseMetrics])
 
   const convRate = m.total ? Math.round((m.converted / m.total) * 100) : 0
-
-  const handleWebSaved = (updated) => {
-    webSync.setData((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        projectEnquiries: (prev.projectEnquiries || []).map((item) => (item.id === updated.id ? updated : item)),
-      }
-    })
-  }
 
   const columns = [
     { key: 'lead_number', header: 'Lead ID', className: 'whitespace-nowrap', render: (l) => (
       <span className="inline-flex items-center whitespace-nowrap rounded-md bg-ink-50 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-ink-600 ring-1 ring-ink-200/80">
-        {l.isWebsiteLead ? (l.lead_number || 'WEB') : leadCode(l.lead_number)}
+        {leadCode(l.lead_number)}
       </span>) },
     { key: 'name', header: 'Lead', sortKey: 'first_name', render: (l) => (
       <div className="flex max-w-[180px] items-center gap-2">
@@ -192,12 +145,10 @@ export default function LeadsPage() {
           : <span className="text-ink-400">—</span>) },
     { key: 'source', header: 'Source', className: 'whitespace-nowrap', render: (l) => (
       l.source
-        ? <span className="inline-flex items-center gap-1 rounded-md bg-ink-50 px-1.5 py-0.5 text-[11px] font-medium text-ink-700"><Globe className="h-3 w-3 shrink-0 text-ink-400" aria-hidden />{l.isWebsiteLead ? 'Website' : labelOf(LEAD_SOURCES, l.source)}</span>
+        ? <span className="inline-flex items-center gap-1 rounded-md bg-ink-50 px-1.5 py-0.5 text-[11px] font-medium text-ink-700"><Globe className="h-3 w-3 shrink-0 text-ink-400" aria-hidden />{labelOf(LEAD_SOURCES, l.source)}</span>
         : <span className="text-ink-400">—</span>) },
     { key: 'status', header: 'Stage', className: 'whitespace-nowrap', render: (l) => (
-      l.isWebsiteLead
-        ? <Badge tone={WEBSITE_STATUS_TONE[l.websiteStatus] || 'gray'}>{formatWebsiteStatus(l.websiteStatus)}</Badge>
-        : <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>) },
+      <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>) },
     { key: 'priority', header: 'Priority', sortKey: 'priority_rank', className: 'whitespace-nowrap', render: (l) => <Badge tone={PRIORITY_TONE[l.priority]}>{labelOf(PRIORITIES, l.priority)}</Badge> },
     { key: 'assignee', header: 'Owner', render: (l) => (
       l.assignee?.full_name
@@ -207,9 +158,9 @@ export default function LeadsPage() {
     { key: 'actions', header: '', className: 'w-16 whitespace-nowrap', render: (l) => (
       <RowActions
         canEdit={can('leads.edit')}
-        canDelete={!l.isWebsiteLead && can('leads.delete')}
+        canDelete={can('leads.delete')}
         label={fullName(l)}
-        onEdit={() => (l.isWebsiteLead ? setEditingWeb(l._raw) : setEditing(l))}
+        onEdit={() => setEditing(l)}
         onDelete={() => setDeleting(l)}
       />) },
   ]
@@ -217,13 +168,13 @@ export default function LeadsPage() {
   const syncButton = (
     <button
       type="button"
-      onClick={webSync.syncNow}
-      disabled={webSync.syncing}
+      onClick={handleWebsiteSync}
+      disabled={syncingWeb}
       className="btn-outline"
-      title={webSync.data?.syncedAt ? `Website synced ${fmtDateTime(webSync.data.syncedAt)}` : 'Sync website enquiries'}
+      title="Sync website enquiries to CRM database"
     >
-      <RefreshCw className={`h-4 w-4 ${webSync.syncing ? 'animate-spin' : ''}`} aria-hidden />
-      {webSync.syncing ? 'Syncing…' : 'Sync Website'}
+      <RefreshCw className={`h-4 w-4 ${syncingWeb ? 'animate-spin' : ''}`} aria-hidden />
+      {syncingWeb ? 'Syncing…' : 'Sync Website'}
     </button>
   )
 
@@ -234,7 +185,7 @@ export default function LeadsPage() {
       {/* Top Lead Metrics Matrix */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <MetricCard
-          icon={Users} label="Total leads" value={m.total} sub="CRM + Website"
+          icon={Users} label="Total leads" value={m.total} sub="Single source of truth"
           tone="brand" sparkColor="#5b5bd6" sparkPoints="0,15 14,12 28,14 42,9 56,7 70,3"
           active={!list.filters.status} onClick={() => list.setFilter('status', '')}
         />
@@ -290,27 +241,20 @@ export default function LeadsPage() {
         <input className="input !w-36" placeholder="Country" value={list.filters.country || ''} onChange={(e) => list.setFilter('country', e.target.value)} aria-label="Filter by country" />
       </FilterBar>
 
-      {list.error && !combinedRows.length ? <ErrorState message={list.error} onRetry={list.reload} /> : (
+      {list.error && !list.rows.length ? <ErrorState message={list.error} onRetry={list.reload} /> : (
         <>
-          <DataTable columns={columns} rows={combinedRows} loading={list.loading && !combinedRows.length} sort={list.sort} onSort={list.toggleSort}
-            onRowClick={(l) => (l.isWebsiteLead ? setEditingWeb(l._raw) : navigate(`/leads/${l.id}`))}
+          <DataTable columns={columns} rows={list.rows} loading={list.loading && !list.rows.length} sort={list.sort} onSort={list.toggleSort}
+            onRowClick={(l) => navigate(`/leads/${l.id}`)}
             empty={list.isFiltered
               ? <EmptyState illustration="search" title="No leads match" description="Try a different search or clear the filters." />
               : <EmptyState illustration="leads" title="No leads yet" description="Add your first lead to start tracking outreach." action={addButton} />} />
-          <Pagination page={list.page} pageSize={list.pageSize} total={list.total + filteredWebLeads.length} onPage={list.setPage} />
+          <Pagination page={list.page} pageSize={list.pageSize} total={list.total} onPage={list.setPage} />
         </>
       )}
 
       <Modal open={Boolean(editing)} title={editing?.id ? 'Edit lead' : 'Add lead'} onClose={() => setEditing(null)} size="lg">
         {editing && <LeadForm key={editing.id || 'new'} initial={editing} onSubmit={save} onCancel={() => setEditing(null)} />}
       </Modal>
-      <WebsiteEnquiryModal
-        enquiry={editingWeb}
-        profiles={profiles.data || []}
-        canEdit={can('leads.edit')}
-        onClose={() => setEditingWeb(null)}
-        onSaved={handleWebSaved}
-      />
       <ConfirmDialog open={Boolean(deleting)} title="Delete lead?" message={`${deleting ? fullName(deleting) : ''} and their activity history will be permanently deleted.`} onConfirm={remove} onClose={() => setDeleting(null)} />
     </div>
   )
