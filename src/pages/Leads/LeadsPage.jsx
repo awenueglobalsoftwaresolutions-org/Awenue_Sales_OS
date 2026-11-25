@@ -24,42 +24,9 @@ import Avatar from '../../components/common/Avatar'
 import LeadForm from '../../components/forms/LeadForm'
 import { useWebsiteSync } from '../../components/website/SyncControls'
 import WebsiteEnquiryModal from '../../components/website/WebsiteEnquiryModal'
-import { WEBSITE_STATUS_TONE, formatWebsiteStatus } from '../../services/website'
+import { WEBSITE_STATUS_TONE, formatWebsiteStatus, normalizeWebsiteEnquiry } from '../../services/website'
 
 const INITIAL_SORT = { key: 'created_at', dir: 'desc' }
-
-const WEB_TO_CRM_STATUS = {
-  NEW: 'new',
-  CONTACTED: 'contacted',
-  QUALIFIED: 'qualified',
-  PROPOSAL_SENT: 'qualified',
-  NEGOTIATION: 'qualified',
-  CONVERTED: 'converted',
-  ON_HOLD: 'unqualified',
-  REJECTED: 'lost',
-}
-
-function normalizeWebsiteEnquiry(e) {
-  return {
-    id: `web-${e.id}`,
-    isWebsiteLead: true,
-    _raw: e,
-    lead_number: e.enquiryNumber,
-    first_name: e.fullName || 'Website Lead',
-    last_name: '',
-    email: e.email,
-    phone: [e.countryCode, e.phone].filter(Boolean).join(' '),
-    interested_service: (e.selectedServices || [])[0] || '',
-    organization: e.companyName ? { name: e.companyName } : null,
-    source: 'website',
-    status: WEB_TO_CRM_STATUS[e.status] || 'new',
-    websiteStatus: e.status,
-    priority: 'medium',
-    priority_rank: 2,
-    assignee: e.assignedTo ? { full_name: e.assignedTo } : null,
-    created_at: e.createdAt,
-  }
-}
 
 function MiniSpark({ color = '#5b5bd6', points = '0,16 14,13 28,15 42,8 56,10 70,3' }) {
   return (

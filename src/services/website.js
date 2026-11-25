@@ -54,6 +54,39 @@ export function formatWebsiteStatus(status) {
     .join(' ')
 }
 
+export const WEB_TO_CRM_STATUS = {
+  NEW: 'new',
+  CONTACTED: 'contacted',
+  QUALIFIED: 'qualified',
+  PROPOSAL_SENT: 'qualified',
+  NEGOTIATION: 'qualified',
+  CONVERTED: 'converted',
+  ON_HOLD: 'unqualified',
+  REJECTED: 'lost',
+}
+
+export function normalizeWebsiteEnquiry(e) {
+  return {
+    id: `web-${e.id}`,
+    isWebsiteLead: true,
+    _raw: e,
+    lead_number: e.enquiryNumber,
+    first_name: e.fullName || 'Website Lead',
+    last_name: '',
+    email: e.email,
+    phone: [e.countryCode, e.phone].filter(Boolean).join(' '),
+    interested_service: (e.selectedServices || [])[0] || '',
+    organization: e.companyName ? { name: e.companyName } : null,
+    source: 'website',
+    status: WEB_TO_CRM_STATUS[e.status] || 'new',
+    websiteStatus: e.status,
+    priority: 'medium',
+    priority_rank: 2,
+    assignee: e.assignedTo ? { full_name: e.assignedTo } : null,
+    created_at: e.createdAt,
+  }
+}
+
 async function requestWebsiteProxy(localPath, workerPath, { method = 'GET', body } = {}) {
   const token = await accessToken()
   const headers = {

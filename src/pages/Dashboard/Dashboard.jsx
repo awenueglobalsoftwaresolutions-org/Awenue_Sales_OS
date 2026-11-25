@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { getDashboardStats, getLeadSourceBreakdown, listRecentActivities, listRecentLeads, listUpcomingTasks } from '../../services/dashboard'
+import { WEBSITE_STATUS_TONE, formatWebsiteStatus } from '../../services/website'
 import { LEAD_STATUSES, PRIORITY_TONE, STATUS_TONE, labelOf } from '../../constants/options'
 import { activityLink, fmtDateTime, fmtDay, fmtMoney, fmtTime, fullName, isTaskOverdue, leadCode } from '../../lib/format'
 import { ICONS } from '../../components/common/ActivityTimeline'
@@ -233,14 +234,19 @@ export default function Dashboard() {
           <ListCard title="Recent leads" icon={UserPlus} to="/leads" state={leads} empty="No leads yet.">
             {(l) => (
               <li key={l.id} className="flex items-center justify-between gap-2.5 py-2.5">
-                <Link to={`/leads/${l.id}`} className="group flex min-w-0 flex-1 items-center gap-2.5">
+                <Link to={l.isWebsiteLead ? '/leads' : `/leads/${l.id}`} className="group flex min-w-0 flex-1 items-center gap-2.5">
                   <Avatar person={{ full_name: fullName(l) }} size={28} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink-900 group-hover:text-brand-700 group-hover:underline">{fullName(l)}</p>
-                    <p className="truncate text-xs text-ink-500">{leadCode(l.lead_number)}{l.organization?.name ? ` · ${l.organization.name}` : ''}</p>
+                    <p className="truncate text-xs text-ink-500">
+                      {l.isWebsiteLead ? (l.lead_number || 'WEB') : leadCode(l.lead_number)}
+                      {l.organization?.name ? ` · ${l.organization.name}` : ''}
+                    </p>
                   </div>
                 </Link>
-                <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>
+                {l.isWebsiteLead
+                  ? <Badge tone={WEBSITE_STATUS_TONE[l.websiteStatus] || 'gray'}>{formatWebsiteStatus(l.websiteStatus)}</Badge>
+                  : <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>}
               </li>
             )}
           </ListCard>
