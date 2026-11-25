@@ -39,3 +39,14 @@ export const sumByCurrency = (deals) => {
 // Where an activity row should take you when clicked (most specific record first).
 export const activityLink = (a) =>
   a.deal_id ? `/deals/${a.deal_id}` : a.lead_id ? `/leads/${a.lead_id}` : a.contact_id ? `/contacts/${a.contact_id}` : a.organization_id ? `/organizations/${a.organization_id}` : null
+
+// Safely validate and sanitize user-provided URLs to guard against javascript:/data: XSS
+export const safeExternalUrl = (url) => {
+  if (!url || typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return null
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i.test(trimmed)) return `https://${trimmed}`
+  return null
+}
+

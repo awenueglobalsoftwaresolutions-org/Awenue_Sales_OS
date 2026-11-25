@@ -3,7 +3,7 @@ import { Building2, Calendar, ExternalLink, Globe, Mail, Phone, Save, Tag } from
 import { toast } from 'sonner'
 import Modal from '../common/Modal'
 import Badge from '../common/Badge'
-import { fmtDateTime } from '../../lib/format'
+import { fmtDateTime, safeExternalUrl } from '../../lib/format'
 import {
   ENQUIRY_STATUSES,
   WEBSITE_STATUS_TONE,
@@ -85,8 +85,8 @@ export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, o
                 <Building2 className="h-4 w-4 shrink-0 text-ink-400" aria-hidden />{enquiry.companyName}
               </span>
             )}
-            {enquiry.websiteUrl && (
-              <a href={enquiry.websiteUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-brand-600 hover:underline">
+            {safeExternalUrl(enquiry.websiteUrl) && (
+              <a href={safeExternalUrl(enquiry.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-600 hover:underline">
                 <Globe className="h-4 w-4 shrink-0" aria-hidden />Website<ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
               </a>
             )}
@@ -145,10 +145,10 @@ export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, o
           <DetailBlock label="Additional Comments" value={enquiry.additionalComments} />
         </div>
 
-        {enquiry.referenceUrl && (
+        {safeExternalUrl(enquiry.referenceUrl) && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
             <span className="font-semibold text-ink-500">Reference URL:</span>
-            <a href={enquiry.referenceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all text-brand-600 hover:underline">
+            <a href={safeExternalUrl(enquiry.referenceUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 break-all text-brand-600 hover:underline">
               {enquiry.referenceUrl}<ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
             </a>
           </div>

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useFetch } from '../../hooks/useFetch'
 import { useAuth } from '../../contexts/AuthContext'
 import { deleteContact, getContact, listDealsByContact, updateContact } from '../../services/contacts'
-import { fmtDate, fmtMoney, fullName } from '../../lib/format'
+import { fmtDate, fmtMoney, fullName, safeExternalUrl } from '../../lib/format'
 import Spinner from '../../components/common/Spinner'
 import ErrorState from '../../components/common/ErrorState'
 import EmptyState from '../../components/common/EmptyState'
@@ -53,7 +53,7 @@ export default function ContactDetail() {
           ['Email', c.email && <a className="text-brand-600 hover:underline" href={`mailto:${c.email}`}>{c.email}</a>],
           ['Phone', c.phone],
           ['Organization', c.organization && <Link className="text-brand-600 hover:underline" to={`/organizations/${c.organization.id}`}>{c.organization.name}</Link>],
-          ['LinkedIn', c.linkedin_url && <a className="text-brand-600 hover:underline" href={c.linkedin_url} target="_blank" rel="noreferrer">Profile</a>],
+          ['LinkedIn', safeExternalUrl(c.linkedin_url) && <a className="text-brand-600 hover:underline" href={safeExternalUrl(c.linkedin_url)} target="_blank" rel="noopener noreferrer">Profile</a>],
           ['Country', c.country], ['Added', fmtDate(c.created_at)],
         ]} />
         {c.notes && <p className="mt-4 whitespace-pre-wrap border-t border-ink-100 pt-4 text-sm text-ink-700">{c.notes}</p>}

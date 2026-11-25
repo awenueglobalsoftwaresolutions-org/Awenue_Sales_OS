@@ -8,7 +8,7 @@ import { deleteOrganization, getOrganization, updateOrganization } from '../../s
 import { listContactsByOrganization } from '../../services/contacts'
 import { listDealsByOrganization, listLeadsByOrganization } from '../../services/leads'
 import { labelOf, COMPANY_SIZES, LEAD_STATUSES } from '../../constants/options'
-import { fmtDate, fmtMoney, fullName, leadCode, location } from '../../lib/format'
+import { fmtDate, fmtMoney, fullName, leadCode, location, safeExternalUrl } from '../../lib/format'
 import Spinner from '../../components/common/Spinner'
 import ErrorState from '../../components/common/ErrorState'
 import EmptyState from '../../components/common/EmptyState'
@@ -81,8 +81,8 @@ export default function OrganizationDetail() {
       <>
       <section className="surface-card p-5">
         <InfoGrid items={[
-          ['Website', o.website && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={/^https?:/.test(o.website) ? o.website : `https://${o.website}`} target="_blank" rel="noreferrer">{o.website}<ExternalLink className="h-3 w-3" /></a>],
-          ['LinkedIn', o.linkedin_url && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={o.linkedin_url} target="_blank" rel="noreferrer">Profile<ExternalLink className="h-3 w-3" /></a>],
+          ['Website', safeExternalUrl(o.website) && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={safeExternalUrl(o.website)} target="_blank" rel="noopener noreferrer">{o.website}<ExternalLink className="h-3 w-3" /></a>],
+          ['LinkedIn', safeExternalUrl(o.linkedin_url) && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={safeExternalUrl(o.linkedin_url)} target="_blank" rel="noopener noreferrer">Profile<ExternalLink className="h-3 w-3" /></a>],
           ['Company size', o.company_size && labelOf(COMPANY_SIZES, o.company_size)],
           ['Industry', o.industry], ['Location', location(o)], ['Added', fmtDate(o.created_at)],
           ['Address', o.address],

@@ -21,16 +21,16 @@ export default function Modal({ open, title, onClose, size = 'md', children }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-ink-900/60 p-4 sm:p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-ink-900/60 p-3 sm:p-6 backdrop-blur-[2px]"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       aria-modal="true"
       role="dialog"
       aria-label={title}
     >
       <div
-        className={`relative my-auto flex max-h-[92vh] w-full ${SIZES[size] || SIZES.md} flex-col rounded-2xl bg-white shadow-2xl ring-1 ring-ink-900/10 animate-fade-up`}
+        className={`relative flex max-h-[90vh] sm:max-h-[86vh] w-full ${SIZES[size] || SIZES.md} flex-col rounded-2xl bg-white shadow-2xl ring-1 ring-ink-900/10 overflow-hidden animate-fade-up`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-6 py-4.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-6 py-4 bg-white z-10">
           <h2 className="text-base font-bold text-ink-900">{title}</h2>
           <button
             onClick={onClose}
@@ -40,7 +40,7 @@ export default function Modal({ open, title, onClose, size = 'md', children }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="thin-scrollbar overflow-y-auto p-6">{children}</div>
+        <div className="flex-1 min-h-0 overflow-y-auto thin-scrollbar p-6">{children}</div>
       </div>
     </div>,
     document.body

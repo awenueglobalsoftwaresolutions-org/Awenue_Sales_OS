@@ -1,8 +1,45 @@
-node_modules
-dist
-.env
-.env.local
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
 
-.vercel
-.wrangler
+# Production and test outputs
+dist/
+dist-ssr/
+coverage/
+
+# Environment variables & secrets (NEVER commit secrets!)
+.env
+.env.*
+!.env.example
+*.local
+
+# Cloud provider / CLI caches & local credentials
+.vercel/
+.wrangler/
 .playwright-mcp/
+.turbo/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Certificates & private keys
+*.pem
+*.key
+*.cert
+*.crt
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
