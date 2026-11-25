@@ -1,4 +1,4 @@
-import { LayoutDashboard, UserPlus, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, FileText, Receipt, Settings } from 'lucide-react'
+import { LayoutDashboard, UserPlus, Globe, MessageSquare, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, FileText, Receipt, Settings } from 'lucide-react'
 
 export const NAV_GROUPS = [
   {
@@ -11,6 +11,8 @@ export const NAV_GROUPS = [
     title: 'CRM & Pipeline',
     items: [
       { perm: 'leads.view', to: '/leads', label: 'Leads', icon: UserPlus },
+      { perm: 'leads.view', to: '/website-leads', label: 'Website Leads', icon: Globe },
+      { perm: 'leads.view', to: '/website-queries', label: 'Website Queries', icon: MessageSquare },
       { perm: 'organizations.view', to: '/organizations', label: 'Organizations', icon: Building2 },
       { perm: 'contacts.view', to: '/contacts', label: 'Contacts', icon: Contact },
       { perm: 'deals.view', to: '/deals', label: 'Deals', icon: Handshake },

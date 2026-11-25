@@ -16,6 +16,8 @@ const ContactsPage = lazy(() => import('./pages/Contacts/ContactsPage'))
 const ContactDetail = lazy(() => import('./pages/Contacts/ContactDetail'))
 const LeadsPage = lazy(() => import('./pages/Leads/LeadsPage'))
 const LeadDetail = lazy(() => import('./pages/Leads/LeadDetail'))
+const WebsiteLeadsPage = lazy(() => import('./pages/WebsiteLeads/WebsiteLeadsPage'))
+const WebsiteQueriesPage = lazy(() => import('./pages/WebsiteQueries/WebsiteQueriesPage'))
 const DealsPage = lazy(() => import('./pages/Deals/DealsPage'))
 const DealDetail = lazy(() => import('./pages/Deals/DealDetail'))
 const PipelinePage = lazy(() => import('./pages/Pipeline/PipelinePage'))
@@ -44,6 +46,8 @@ export default function App() {
             <Route path="contacts/:id" element={guarded('contacts.view', <ContactDetail />)} />
             <Route path="leads" element={guarded('leads.view', <LeadsPage />)} />
             <Route path="leads/:id" element={guarded('leads.view', <LeadDetail />)} />
+            <Route path="website-leads" element={guarded('leads.view', <WebsiteLeadsPage />)} />
+            <Route path="website-queries" element={guarded('leads.view', <WebsiteQueriesPage />)} />
             <Route path="deals" element={guarded('deals.view', <DealsPage />)} />
             <Route path="deals/:id" element={guarded('deals.view', <DealDetail />)} />
             <Route path="pipeline" element={guarded('deals.view', <PipelinePage />)} />

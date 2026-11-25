@@ -6,7 +6,7 @@ export const json = (body, status = 200, headers = {}) =>
 export function corsHeaders(request, env) {
   const origin = request.headers.get('Origin') || ''
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean)
-  const h = { 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400', Vary: 'Origin' }
+  const h = { 'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400', Vary: 'Origin' }
   if (allowed.includes(origin)) h['Access-Control-Allow-Origin'] = origin
   return h
 }

@@ -5,6 +5,7 @@ import * as users from './routes/users.js'
 import * as auth from './routes/auth.js'
 import * as gmail from './routes/gmail.js'
 import * as email from './routes/email.js'
+import * as website from './routes/website.js'
 
 export default {
   async fetch(request, env) {
@@ -12,9 +13,19 @@ export default {
     const cors = corsHeaders(request, env)
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
     try {
-      switch (`${request.method} ${url.pathname}`) {
+      const route = `${request.method} ${url.pathname}`
+      if (request.method === 'PATCH' && url.pathname.startsWith('/website/project-enquiries/')) {
+        const id = decodeURIComponent(url.pathname.slice('/website/project-enquiries/'.length))
+        return json(await website.updateEnquiry(request, id, env), 200, cors)
+      }
+      if (request.method === 'PATCH' && url.pathname.startsWith('/website/contact-messages/')) {
+        const id = decodeURIComponent(url.pathname.slice('/website/contact-messages/'.length))
+        return json(await website.updateContact(request, id, env), 200, cors)
+      }
+      switch (route) {
         case 'GET /file': return await files.serveFile(url, env)
         case 'GET /gmail/callback': return await gmail.callback(url, env)
+        case 'GET /website/sync': return json(await website.sync(request, url, env), 200, cors)
         case 'POST /upload': case 'POST /files/upload': return json(await files.upload(request, url, env), 201, cors)
         case 'POST /sign': case 'POST /files/sign': return json(await files.signUrl(request, url, env), 200, cors)
         case 'POST /delete': case 'POST /files/delete': return json(await files.remove(request, env), 200, cors)
