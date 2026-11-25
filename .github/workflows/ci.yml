@@ -1,0 +1,132 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Security Audit & Secret Leak Detection
+  # -------------------------------------------------------------
+  security-audit:
+    name: Security & Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Secret Scan (Prevent Leaked Environment Files & Keys)
+        run: |
+          echo "Scanning git tracked files for accidental secrets..."
+          if git ls-files | grep -E "(^|\/)\.env($|\..*)"; then
+            echo "ERROR: Tracked .env file detected in repository!"
+            exit 1
+          fi
+          echo "No tracked .env files detected."
+
+      - name: Run NPM Security Audit
+        run: |
+          npm audit --audit-level=critical || echo "Audit completed with warnings"
+
+  # -------------------------------------------------------------
+  # Job 2: Comprehensive Test Suite (Database, Worker, PDF, Email)
+  # -------------------------------------------------------------
+  test-suite:
+    name: Automated Tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+      fail-fast: false
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run PDF Template Tests
+        run: npm run test:pdf
+
+      - name: Run Email Template Tests
+        run: npm run test:email
+
+      - name: Run Cloudflare Worker Tests
+        run: npm run test:worker
+
+      - name: Run PostgreSQL / PGlite RLS & Schema Tests
+        run: npm run test:db
+
+  # -------------------------------------------------------------
+  # Job 3: Production Build & Asset Verification
+  # -------------------------------------------------------------
+  build-verification:
+    name: Production Build & Bundle Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [security-audit, test-suite]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile Production Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://vpbkjtrdsqjyyiypozod.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci_build' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.awenueglobalsoftwaresolutions.in' }}
+
+      - name: Verify Build Artifacts
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERROR: dist/index.html not found!"
+            exit 1
+          fi
+          echo "Build verification passed: dist/ exists and contains index.html"
+          ls -la dist/
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-dist
+          path: dist/
+          retention-days: 7

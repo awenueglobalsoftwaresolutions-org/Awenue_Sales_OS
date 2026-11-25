@@ -1,0 +1,86 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Build & Verify Artifacts for Deployment
+  # -------------------------------------------------------------
+  build-for-deploy:
+    name: Build Production Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile Vite Assets
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://vpbkjtrdsqjyyiypozod.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci_build' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.awenueglobalsoftwaresolutions.in' }}
+
+      - name: Archive Production Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-ready-dist
+          path: dist/
+          retention-days: 2
+
+  # -------------------------------------------------------------
+  # Job 2: Vercel Deployment (Production on master, Preview on PR)
+  # -------------------------------------------------------------
+  deploy-vercel:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [build-for-deploy]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Vercel Credentials
+        id: check_credentials
+        run: |
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "Vercel credentials detected in repository secrets."
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "Vercel credentials not found in secrets. Skipping automated deployment CLI."
+            echo "Note: If your repo is directly connected in Vercel Dashboard (Git Integration), Vercel automatically deploys on push."
+          fi
+
+      - name: Deploy to Vercel (When Secrets Configured)
+        if: steps.check_credentials.outputs.configured == 'true'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ github.ref == 'refs/heads/master' && '--prod' || '' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: ./
