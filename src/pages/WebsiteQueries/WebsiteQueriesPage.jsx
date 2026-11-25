@@ -12,9 +12,12 @@ import {
   Mail,
   MessageSquare,
   Phone,
+  Plus,
   Sparkles,
   Tag,
+  Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { listProfiles } from '../../services/lookups'
@@ -28,9 +31,11 @@ import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
 import Badge from '../../components/common/Badge'
 import Avatar from '../../components/common/Avatar'
+import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { SyncControls, useWebsiteSync } from '../../components/website/SyncControls'
 import WebsiteContactModal from '../../components/website/WebsiteContactModal'
 import WebsiteEnquiryModal from '../../components/website/WebsiteEnquiryModal'
+import AddWebsiteQueryModal from '../../components/website/AddWebsiteQueryModal'
 import {
   CONTACT_STATUSES,
   CONTACT_SUBJECTS,
@@ -38,11 +43,12 @@ import {
   WEBSITE_STATUS_TONE,
   formatWebsiteStatus,
 } from '../../services/website'
+import { deleteWebsiteQueryDirectly } from '../../services/websiteSync'
 
 const PAGE_SIZE = 10
 
 export default function WebsiteQueriesPage() {
-  const { can } = useAuth()
+  const { can, profile } = useAuth()
   const canEdit = can('leads.edit')
   const { data, setData, loading, syncing, error, autoRefreshSec, setAutoRefreshSec, syncNow } = useWebsiteSync('all')
   const profiles = useFetch(listProfiles, [])
@@ -56,9 +62,64 @@ export default function WebsiteQueriesPage() {
 
   const [selectedContact, setSelectedContact] = useState(null)
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
+  const [addingQuery, setAddingQuery] = useState(false)
+  const [deletingItem, setDeletingItem] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const messages = data?.contactMessages || []
   const enquiries = data?.projectEnquiries || []
+
+  const handleDeletedItem = (id, type) => {
+    setData((prev) => {
+      if (!prev) return prev
+      if (type === 'contacts') {
+        return {
+          ...prev,
+          contactMessages: (prev.contactMessages || []).filter((m) => m.id !== id),
+        }
+      } else {
+        return {
+          ...prev,
+          projectEnquiries: (prev.projectEnquiries || []).filter((e) => e.id !== id),
+        }
+      }
+    })
+  }
+
+  const confirmDeleteItem = async () => {
+    if (!deletingItem) return
+    setIsDeleting(true)
+    try {
+      await deleteWebsiteQueryDirectly({
+        type: deletingItem.type,
+        item: deletingItem.item,
+      }, profile)
+      toast.success(`${deletingItem.type === 'contacts' ? 'Contact query' : 'Project enquiry'} deleted from CRM Database.`)
+      handleDeletedItem(deletingItem.item.id, deletingItem.type)
+      setDeletingItem(null)
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete item.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleQueryCreated = (res) => {
+    setData((prev) => {
+      if (!prev) return prev
+      if (res.type === 'contacts') {
+        return {
+          ...prev,
+          contactMessages: [res, ...(prev.contactMessages || [])],
+        }
+      } else {
+        return {
+          ...prev,
+          projectEnquiries: [res, ...(prev.projectEnquiries || [])],
+        }
+      }
+    })
+  }
 
   // KPIs for Contacts
   const contactKpis = useMemo(() => {
@@ -230,6 +291,26 @@ export default function WebsiteQueriesPage() {
       className: 'whitespace-nowrap text-[11px] text-ink-500',
       render: (m) => fmtDate(m.createdAt),
     },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-10 text-right',
+      render: (m) => (
+        canEdit && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDeletingItem({ type: 'contacts', item: m })
+            }}
+            className="btn-ghost !p-1.5 text-ink-400 hover:!bg-red-50 hover:text-red-600"
+            title="Delete from Database"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )
+      ),
+    },
   ]
 
   // Enquiries Columns
@@ -324,6 +405,26 @@ export default function WebsiteQueriesPage() {
       className: 'whitespace-nowrap text-[11px] text-ink-500',
       render: (e) => fmtDate(e.createdAt),
     },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-10 text-right',
+      render: (e) => (
+        canEdit && (
+          <button
+            type="button"
+            onClick={(evt) => {
+              evt.stopPropagation()
+              setDeletingItem({ type: 'enquiries', item: e })
+            }}
+            className="btn-ghost !p-1.5 text-ink-400 hover:!bg-red-50 hover:text-red-600"
+            title="Delete from Database"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )
+      ),
+    },
   ]
 
   const isFiltered = Boolean(search || subjectFilter || statusFilter)
@@ -336,6 +437,16 @@ export default function WebsiteQueriesPage() {
         subtitle="Live inquiries and Contact Us messages synced from awenueglobalsoftwaresolutions.in"
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setAddingQuery(true)}
+                className="btn-primary !py-1.5 text-xs inline-flex items-center gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Query
+              </button>
+            )}
             <Link
               to="/pipeline?tab=leads"
               className="btn-outline !py-1.5 text-xs inline-flex items-center gap-1.5"
@@ -529,6 +640,7 @@ export default function WebsiteQueriesPage() {
         canEdit={canEdit}
         onClose={() => setSelectedContact(null)}
         onSaved={handleContactSaved}
+        onDeleted={(id) => handleDeletedItem(id, 'contacts')}
       />
 
       <WebsiteEnquiryModal
@@ -537,6 +649,24 @@ export default function WebsiteQueriesPage() {
         canEdit={canEdit}
         onClose={() => setSelectedEnquiry(null)}
         onSaved={handleEnquirySaved}
+        onDeleted={(id) => handleDeletedItem(id, 'enquiries')}
+      />
+
+      <AddWebsiteQueryModal
+        isOpen={addingQuery}
+        onClose={() => setAddingQuery(false)}
+        onSuccess={handleQueryCreated}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(deletingItem)}
+        title={deletingItem?.type === 'contacts' ? 'Delete Contact Query' : 'Delete Project Enquiry'}
+        description={`Are you sure you want to permanently delete this ${deletingItem?.type === 'contacts' ? 'contact message' : 'project enquiry'} from the database? This will also remove any unconverted lead records.`}
+        confirmLabel="Delete from Database"
+        confirmTone="danger"
+        loading={isDeleting}
+        onConfirm={confirmDeleteItem}
+        onClose={() => setDeletingItem(null)}
       />
     </div>
   )

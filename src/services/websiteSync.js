@@ -21,16 +21,102 @@ export const CRM_TO_MSG_STATUS = {
 }
 
 /**
+ * Reads website enquiries and contact messages directly from the Supabase database.
+ */
+export async function loadWebsiteQueriesFromDatabase(workspaceId) {
+  if (!workspaceId) return { contactMessages: [], projectEnquiries: [], syncedAt: new Date().toISOString() }
+  try {
+    const [cRes, eRes] = await Promise.all([
+      supabase.from('website_contact_messages').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }),
+      supabase.from('website_enquiries').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }),
+    ])
+
+    const contactMessages = (cRes.data || []).map((r) => ({
+      id: r.external_id || r.id,
+      db_id: r.id,
+      messageNumber: r.message_number,
+      fullName: r.full_name,
+      email: r.email,
+      phone: r.phone,
+      countryCode: r.country_code,
+      subject: r.subject,
+      message: r.message,
+      status: r.status,
+      assignedTo: r.assigned_to,
+      internalNotes: r.internal_notes,
+      lead_id: r.lead_id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }))
+
+    const projectEnquiries = (eRes.data || []).map((r) => ({
+      id: r.external_id || r.id,
+      db_id: r.id,
+      enquiryNumber: r.enquiry_number,
+      fullName: r.full_name,
+      email: r.email,
+      phone: r.phone,
+      countryCode: r.country_code,
+      companyName: r.company_name,
+      websiteUrl: r.website_url,
+      projectScope: r.project_scope,
+      selectedServices: r.selected_services || [],
+      selectedSubServices: r.selected_sub_services || [],
+      budgetRange: r.budget_range,
+      timeline: r.timeline,
+      referenceUrl: r.reference_url,
+      status: r.status,
+      assignedTo: r.assigned_to,
+      internalNotes: r.internal_notes,
+      lead_id: r.lead_id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }))
+
+    return { contactMessages, projectEnquiries, syncedAt: new Date().toISOString() }
+  } catch (err) {
+    console.warn('loadWebsiteQueriesFromDatabase notice:', err?.message)
+    return { contactMessages: [], projectEnquiries: [], syncedAt: new Date().toISOString() }
+  }
+}
+
+/**
  * Fetches website enquiries and contact messages from the main website API,
- * and directly stores and updates them in the Supabase database (`leads`,
- * `website_enquiries`, and `website_contact_messages`).
+ * stores and updates them in the Supabase database (`leads`, `website_enquiries`,
+ * and `website_contact_messages`), and falls back to Supabase if API is offline.
  */
 export async function syncAndPersistWebsiteData(profile, { type = 'all', limit = 200 } = {}) {
-  // 1. Fetch live data from Main Website API
-  const websiteData = await syncWebsiteData({ type, limit })
+  const workspaceId = profile?.workspace_id
+
+  // 1. Fetch live data from Main Website API (with graceful fallback to local DB)
+  let websiteData = null
+  let apiFailed = false
+  try {
+    websiteData = await syncWebsiteData({ type, limit })
+  } catch (err) {
+    apiFailed = true
+    console.warn('Main website API sync warning, falling back to database:', err.message)
+  }
+
+  // If API failed or workspace available, load current state from Supabase database
+  const dbData = workspaceId ? await loadWebsiteQueriesFromDatabase(workspaceId) : { contactMessages: [], projectEnquiries: [] }
+
+  if (apiFailed || !websiteData) {
+    return {
+      contactMessages: dbData.contactMessages,
+      projectEnquiries: dbData.projectEnquiries,
+      syncedAt: dbData.syncedAt,
+      fromDatabase: true,
+      stats: {
+        syncedAt: dbData.syncedAt,
+        enquiriesCount: dbData.projectEnquiries.length,
+        contactsCount: dbData.contactMessages.length,
+      },
+    }
+  }
+
   const enquiries = websiteData?.projectEnquiries || []
   const contacts = websiteData?.contactMessages || []
-  const workspaceId = profile?.workspace_id
 
   if (!workspaceId) return websiteData
 
@@ -361,5 +447,151 @@ export async function syncLeadStatusToWebsite(lead, newStatus) {
       console.warn('Background sync to website API failed:', err?.message)
     }
   }
+}
+
+/**
+ * Creates a new Website Query directly in Supabase (`leads` + `website_enquiries` or `website_contact_messages`).
+ */
+export async function createWebsiteQueryDirectly({ type = 'contacts', data }, profile) {
+  const workspaceId = profile?.workspace_id
+  if (!workspaceId) throw new Error('Workspace not found')
+
+  const now = new Date().toISOString()
+  const externalId = `manual-${Date.now()}`
+  const email = data.email?.trim()?.toLowerCase() || null
+  const nameParts = (data.fullName || 'Website Inquiry').trim().split(/\s+/)
+  const firstName = nameParts[0] || 'Website'
+  const lastName = nameParts.slice(1).join(' ') || ''
+  const fullPhone = [data.countryCode, data.phone].filter(Boolean).join(' ')
+
+  let leadId = null
+
+  // Insert lead into CRM leads table
+  const { data: createdLead } = await supabase.from('leads').insert({
+    workspace_id: workspaceId,
+    first_name: firstName,
+    last_name: lastName,
+    email,
+    phone: fullPhone || null,
+    website: data.websiteUrl || null,
+    source: 'website',
+    interested_service: data.selectedServices?.[0] || data.subject || 'Website Inquiry',
+    notes: data.projectScope || data.message || '',
+    status: 'new',
+    priority: 'medium',
+    created_by: profile?.id || null,
+    created_at: now,
+  }).select('id').maybeSingle()
+
+  if (createdLead?.id) leadId = createdLead.id
+
+  if (type === 'contacts') {
+    const { data: insertedContact, error: cErr } = await supabase.from('website_contact_messages').insert({
+      workspace_id: workspaceId,
+      external_id: externalId,
+      message_number: `MSG-${Date.now().toString().slice(-4)}`,
+      full_name: data.fullName,
+      email,
+      phone: fullPhone || null,
+      country_code: data.countryCode || '+91',
+      subject: data.subject || 'General Enquiry',
+      message: data.message || '',
+      status: 'NEW',
+      assigned_to: data.assignedTo || null,
+      internal_notes: data.internalNotes || null,
+      lead_id: leadId,
+      created_at: now,
+      updated_at: now,
+    }).select().maybeSingle()
+
+    if (cErr) throw new Error(cErr.message)
+    return {
+      type: 'contacts',
+      id: externalId,
+      ...insertedContact,
+      lead_id: leadId,
+      fullName: data.fullName,
+      email,
+      phone: fullPhone,
+      messageNumber: insertedContact?.message_number || `MSG-${Date.now().toString().slice(-4)}`,
+      createdAt: now,
+    }
+  } else {
+    const { data: insertedEnquiry, error: eErr } = await supabase.from('website_enquiries').insert({
+      workspace_id: workspaceId,
+      external_id: externalId,
+      enquiry_number: `ENQ-${Date.now().toString().slice(-4)}`,
+      full_name: data.fullName,
+      email,
+      phone: fullPhone || null,
+      country_code: data.countryCode || '+91',
+      company_name: data.companyName || null,
+      website_url: data.websiteUrl || null,
+      project_scope: data.projectScope || null,
+      selected_services: Array.isArray(data.selectedServices) ? data.selectedServices : [],
+      selected_sub_services: Array.isArray(data.selectedSubServices) ? data.selectedSubServices : [],
+      budget_range: data.budgetRange || null,
+      timeline: data.timeline || null,
+      reference_url: data.referenceUrl || null,
+      status: 'NEW',
+      assigned_to: data.assignedTo || null,
+      internal_notes: data.internalNotes || null,
+      lead_id: leadId,
+      created_at: now,
+      updated_at: now,
+    }).select().maybeSingle()
+
+    if (eErr) throw new Error(eErr.message)
+    return {
+      type: 'enquiries',
+      id: externalId,
+      ...insertedEnquiry,
+      lead_id: leadId,
+      fullName: data.fullName,
+      email,
+      phone: fullPhone,
+      companyName: data.companyName,
+      enquiryNumber: insertedEnquiry?.enquiry_number || `ENQ-${Date.now().toString().slice(-4)}`,
+      createdAt: now,
+    }
+  }
+}
+
+/**
+ * Deletes a Website Query from the Supabase database.
+ */
+export async function deleteWebsiteQueryDirectly({ type = 'contacts', item }, profile) {
+  if (!item) return { success: false }
+  const workspaceId = profile?.workspace_id
+  const table = type === 'contacts' ? 'website_contact_messages' : 'website_enquiries'
+
+  if (workspaceId) {
+    const extId = String(item.id || item.external_id)
+    await supabase
+      .from(table)
+      .delete()
+      .eq('workspace_id', workspaceId)
+      .or(`external_id.eq.${extId},id.eq.${extId}`)
+
+    // Also remove or clean up linked lead if it was unconverted
+    if (item.lead_id) {
+      try {
+        const { data: lead } = await supabase.from('leads').select('id, status').eq('id', item.lead_id).maybeSingle()
+        if (lead && lead.status !== 'converted') {
+          await supabase.from('leads').delete().eq('id', item.lead_id)
+        }
+      } catch {}
+    }
+  }
+
+  if (profile) {
+    await createActivity({
+      activity_type: 'status_update',
+      title: `Deleted website ${type === 'contacts' ? 'contact query' : 'project enquiry'}`,
+      description: `Removed inquiry for ${item.fullName || item.email} from CRM database.`,
+    }, null, null, profile).catch(() => {})
+  }
+
+  return { success: true }
 }
 

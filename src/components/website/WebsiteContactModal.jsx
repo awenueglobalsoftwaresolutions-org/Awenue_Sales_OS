@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
-import { Calendar, CheckCircle2, Clock, Eye, Mail, Phone, Save } from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, Eye, KanbanSquare, Mail, Phone, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../common/Modal'
 import Badge from '../common/Badge'
+import ConfirmDialog from '../common/ConfirmDialog'
+import ConvertLeadModal from '../../pages/Leads/ConvertLeadModal'
 import { fmtDateTime } from '../../lib/format'
 import {
   CONTACT_STATUSES,
   WEBSITE_STATUS_TONE,
   formatWebsiteStatus,
 } from '../../services/website'
-import { updateWebsiteQueryDirectly } from '../../services/websiteSync'
+import { updateWebsiteQueryDirectly, deleteWebsiteQueryDirectly } from '../../services/websiteSync'
+import { supabase } from '../../lib/supabase'
 
-export default function WebsiteContactModal({ message, profiles = [], canEdit, onClose, onSaved }) {
+export default function WebsiteContactModal({ message, profiles = [], canEdit, onClose, onSaved, onDeleted }) {
   const { profile } = useAuth()
   const [status, setStatus] = useState('NEW')
   const [assignedTo, setAssignedTo] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [convertingLead, setConvertingLead] = useState(null)
+  const [loadingConvert, setLoadingConvert] = useState(false)
 
   useEffect(() => {
     if (!message) return
@@ -29,6 +35,55 @@ export default function WebsiteContactModal({ message, profiles = [], canEdit, o
   if (!message) return null
 
   const phoneDisplay = [message.countryCode, message.phone].filter(Boolean).join(' ')
+
+  const handleDelete = async () => {
+    setSaving(true)
+    try {
+      await deleteWebsiteQueryDirectly({ type: 'contacts', item: message }, profile)
+      toast.success('Contact query deleted from CRM Database.')
+      onDeleted?.(message.id)
+      setConfirmDelete(false)
+      onClose()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete query.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleStartConvert = async () => {
+    setLoadingConvert(true)
+    try {
+      let lead = null
+      if (message.lead_id) {
+        const { data } = await supabase.from('leads').select('*').eq('id', message.lead_id).maybeSingle()
+        lead = data
+      }
+      if (!lead && message.email) {
+        const { data } = await supabase.from('leads').select('*').ilike('email', message.email).maybeSingle()
+        lead = data
+      }
+      if (!lead) {
+        // Fallback construct lead object
+        lead = {
+          id: message.lead_id || null,
+          first_name: message.fullName || 'Website Contact',
+          last_name: '',
+          email: message.email,
+          phone: phoneDisplay,
+          interested_service: message.subject || 'Website Query',
+          notes: message.message,
+          source: 'website',
+          status: 'new',
+        }
+      }
+      setConvertingLead(lead)
+    } catch (err) {
+      toast.error('Could not prepare lead for conversion.')
+    } finally {
+      setLoadingConvert(false)
+    }
+  }
 
   const persistUpdate = async (nextStatus, closeAfter = true) => {
     setSaving(true)
@@ -182,17 +237,65 @@ export default function WebsiteContactModal({ message, profiles = [], canEdit, o
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <button type="button" className="btn-outline" onClick={onClose}>Close</button>
-            {canEdit && (
-              <button type="submit" className="btn-primary" disabled={saving}>
-                <Save className="h-4 w-4" aria-hidden />
-                {saving ? 'Saving…' : 'Save Changes'}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            <div>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={saving}
+                  className="btn-ghost !p-2 text-red-600 hover:!bg-red-50 hover:text-red-700"
+                  title="Delete from Database"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  <span className="text-xs">Delete Query</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleStartConvert}
+                disabled={saving || loadingConvert}
+                className="btn-outline !py-1.5 text-xs text-brand-700 hover:bg-brand-50"
+              >
+                <KanbanSquare className="h-3.5 w-3.5" aria-hidden />
+                {loadingConvert ? 'Opening…' : 'Convert to Deal'}
               </button>
-            )}
+              <button type="button" className="btn-outline" onClick={onClose}>Close</button>
+              {canEdit && (
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  <Save className="h-4 w-4" aria-hidden />
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete Contact Query?"
+        message={`Are you sure you want to delete query from ${message.fullName || message.email}? This will remove it from the CRM Database.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        onClose={() => setConfirmDelete(false)}
+      />
+
+      {convertingLead && (
+        <ConvertLeadModal
+          lead={convertingLead}
+          onClose={() => setConvertingLead(null)}
+          onDone={() => {
+            setConvertingLead(null)
+            persistUpdate('RESOLVED', false)
+            toast.success('Converted to Sales Pipeline deal!')
+          }}
+        />
+      )}
     </Modal>
   )
 }
