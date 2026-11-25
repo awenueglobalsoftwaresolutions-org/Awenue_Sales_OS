@@ -7,10 +7,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Long-lived vendor chunks cache well between deployments.
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+        manualChunks: (id) => {
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'react'
+          if (id.includes('@supabase')) return 'supabase'
+          if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) return 'forms'
         },
       },
     },

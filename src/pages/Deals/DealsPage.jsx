@@ -44,12 +44,18 @@ export default function DealsPage() {
   const remove = async () => { await deleteDeal(deleting.id); toast.success('Deal deleted'); setDeleting(null); list.reload() }
 
   const columns = [
-    { key: 'title', header: 'Deal', sortKey: 'title', render: (d) => <span className="font-medium">{d.title}</span> },
+    { key: 'title', header: 'Deal', sortKey: 'title', render: (d) => <span className="font-semibold text-ink-900">{d.title}</span> },
     { key: 'organization', header: 'Organization', render: (d) => d.organization?.name || '—' },
     { key: 'contact', header: 'Contact', render: (d) => (d.contact ? fullName(d.contact) : '—') },
-    { key: 'value', header: 'Value', sortKey: 'value', render: (d) => fmtMoney(d.value, d.currency) },
+    { key: 'value', header: 'Value', sortKey: 'value', render: (d) => <span className="font-semibold text-ink-900">{fmtMoney(d.value, d.currency)}</span> },
     { key: 'stage', header: 'Stage', render: (d) => <Badge tone={STAGE_TONE[d.stage]}>{labelOf(DEAL_STAGES, d.stage)}</Badge> },
-    { key: 'probability', header: 'Prob.', render: (d) => `${d.probability}%` },
+    { key: 'probability', header: 'Prob.', render: (d) => (
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-12 overflow-hidden rounded-full bg-ink-100">
+          <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(100, Math.max(0, d.probability ?? 0))}%` }} />
+        </div>
+        <span className="text-xs font-medium text-ink-600">{d.probability}%</span>
+      </div>) },
     { key: 'expected_close_date', header: 'Closing', sortKey: 'expected_close_date', render: (d) => fmtDay(d.expected_close_date) },
     { key: 'assignee', header: 'Salesperson', render: (d) => d.assignee?.full_name || 'Unassigned' },
     { key: 'actions', header: '', className: 'w-24', render: (d) => <RowActions canEdit={can('deals.edit')} canDelete={can('deals.delete')} label={d.title} onEdit={() => setEditing(d)} onDelete={() => setDeleting(d)} /> },
@@ -57,8 +63,8 @@ export default function DealsPage() {
   const addButton = !can('deals.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add deal</button>
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <PageHeader title="Deals" subtitle="Opportunities you're working on" actions={<><Link to="/pipeline" className="btn-ghost border border-ink-300"><KanbanSquare className="h-4 w-4" />Pipeline view</Link>{addButton}</>} />
+    <div className="mx-auto max-w-7xl animate-fade-up">
+      <PageHeader title="Deals" subtitle="Opportunities you're working on" icon={Handshake} actions={<><Link to="/pipeline" className="btn-outline"><KanbanSquare className="h-4 w-4" />Pipeline view</Link>{addButton}</>} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search deal title" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any stage" value={list.filters.stage} onChange={(v) => list.setFilter('stage', v)} options={DEAL_STAGES} />
         <FilterSelect label="Any salesperson" value={list.filters.assigned_to} onChange={(v) => list.setFilter('assigned_to', v)} options={(users.data || []).map((u) => ({ value: u.id, label: u.full_name || u.email }))} />
@@ -70,8 +76,8 @@ export default function DealsPage() {
         <>
           <DataTable columns={columns} rows={list.rows} loading={list.loading} sort={list.sort} onSort={list.toggleSort} onRowClick={(d) => navigate(`/deals/${d.id}`)}
             empty={list.isFiltered
-              ? <EmptyState icon={Handshake} title="No deals match" description="Try a different search or clear the filters." />
-              : <EmptyState icon={Handshake} title="No deals yet" description="Add a deal here, or convert a qualified lead from the Leads page." action={addButton} />} />
+              ? <EmptyState illustration="search" title="No deals match" description="Try a different search or clear the filters." />
+              : <EmptyState illustration="deals" title="No deals yet" description="Add a deal here, or convert a qualified lead from the Leads page." action={addButton} />} />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} onPage={list.setPage} />
         </>
       )}

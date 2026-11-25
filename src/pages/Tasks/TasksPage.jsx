@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Check, CheckSquare, Mail, Plus } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, Check, CheckSquare, ListTodo, Mail, Plus } from 'lucide-react'
 import EmailComposer from '../../components/email/EmailComposer'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
@@ -12,6 +12,7 @@ import { PRIORITIES, PRIORITY_TONE, TASK_DUE_FILTERS, TASK_STATUSES, TASK_STATUS
 import { friendlyError } from '../../lib/errors'
 import { fmtDay, fmtTime, fullName, isTaskOverdue, leadCode } from '../../lib/format'
 import PageHeader from '../../components/common/PageHeader'
+import StatTile from '../../components/common/StatTile'
 import { FilterBar, FilterSelect } from '../../components/common/FilterBar'
 import DataTable from '../../components/tables/DataTable'
 import Pagination from '../../components/common/Pagination'
@@ -25,15 +26,6 @@ import TaskForm from '../../components/forms/TaskForm'
 
 const INITIAL_SORT = { key: 'due_date', dir: 'asc' }
 const STATUS_FILTERS = [{ value: 'open', label: 'Open (pending + in progress)' }, ...TASK_STATUSES]
-
-function Stat({ label, value, tone = '', onClick }) {
-  return (
-    <button onClick={onClick} className="rounded-xl border border-ink-100 bg-white p-4 text-left shadow-card transition hover:border-brand-500">
-      <p className="text-xs font-medium text-ink-500">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${tone}`}>{value ?? '—'}</p>
-    </button>
-  )
-}
 
 export default function TasksPage() {
   const { profile, can } = useAuth()
@@ -64,15 +56,15 @@ export default function TasksPage() {
   const columns = [
     { key: 'done', header: '', className: 'w-10', render: (t) => (
       <button onClick={(e) => { stop(e); toggle(t) }} aria-label={t.status === 'completed' ? `Reopen ${t.title}` : `Complete ${t.title}`}
-        className={`grid h-5 w-5 place-items-center rounded-full border ${t.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-ink-300 hover:border-brand-500'}`}>{t.status === 'completed' && <Check className="h-3 w-3" />}</button>) },
+        className={`grid h-5 w-5 place-items-center rounded-full border transition ${t.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-ink-300 hover:border-brand-500'}`}>{t.status === 'completed' && <Check className="h-3 w-3" />}</button>) },
     { key: 'title', header: 'Task', render: (t) => (
-      <div className="min-w-0"><p className={`font-medium ${['completed', 'cancelled'].includes(t.status) ? 'text-ink-500 line-through' : ''}`}>{t.title}</p><p className="text-xs text-ink-500">{labelOf(TASK_TYPES, t.task_type)}</p></div>) },
+      <div className="min-w-0"><p className={`font-medium ${['completed', 'cancelled'].includes(t.status) ? 'text-ink-500 line-through' : 'text-ink-900'}`}>{t.title}</p><p className="text-xs text-ink-500">{labelOf(TASK_TYPES, t.task_type)}</p></div>) },
     { key: 'related', header: 'Related to', render: (t) => {
       const links = [
         t.deal && [`/deals/${t.deal.id}`, `Deal: ${t.deal.title}`], t.lead && [`/leads/${t.lead.id}`, `Lead: ${leadCode(t.lead.lead_number)} ${fullName(t.lead)}`],
         t.organization && [`/organizations/${t.organization.id}`, `Org: ${t.organization.name}`], t.contact && [`/contacts/${t.contact.id}`, `Contact: ${fullName(t.contact)}`],
       ].filter(Boolean)
-      return links.length ? <div className="space-y-0.5">{links.map(([to, text]) => <Link key={to} to={to} onClick={stop} className="block max-w-[220px] truncate text-xs text-brand-600 hover:underline">{text}</Link>)}</div> : <span className="text-ink-500">—</span>
+      return links.length ? <div className="space-y-0.5">{links.map(([to, text]) => <Link key={to} to={to} onClick={stop} className="block max-w-[220px] truncate text-xs font-medium text-brand-600 hover:underline">{text}</Link>)}</div> : <span className="text-ink-500">—</span>
     } },
     { key: 'assignee', header: 'Assigned to', render: (t) => t.assignee?.full_name || 'Unassigned' },
     { key: 'due_date', header: 'Due', sortKey: 'due_date', render: (t) => {
@@ -88,13 +80,13 @@ export default function TasksPage() {
   const c = counts.data || {}
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <PageHeader title="Tasks & Follow-ups" subtitle="Calls, emails, meetings and follow-ups" actions={addButton} />
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Overdue" value={c.overdue} tone={c.overdue ? 'text-red-600' : ''} onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'overdue') }} />
-        <Stat label="Due today" value={c.today} onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'today') }} />
-        <Stat label="Next 7 days" value={c.week} onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'week') }} />
-        <Stat label="Open tasks" value={c.open} onClick={() => { list.setFilter('due', ''); list.setFilter('status', 'open') }} />
+    <div className="mx-auto max-w-7xl animate-fade-up">
+      <PageHeader title="Tasks & Follow-ups" subtitle="Calls, emails, meetings and follow-ups" icon={CheckSquare} actions={addButton} />
+      <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+        <StatTile icon={AlertTriangle} label="Overdue" value={c.overdue} danger={c.overdue > 0} tone="emerald" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'overdue') }} />
+        <StatTile icon={CalendarClock} label="Due today" value={c.today} tone="amber" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'today') }} />
+        <StatTile icon={CalendarDays} label="Next 7 days" value={c.week} tone="sky" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'week') }} />
+        <StatTile icon={ListTodo} label="Open tasks" value={c.open} tone="brand" onClick={() => { list.setFilter('due', ''); list.setFilter('status', 'open') }} />
       </div>
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search task title" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any status" value={list.filters.status} onChange={(v) => list.setFilter('status', v)} options={STATUS_FILTERS} />
@@ -108,8 +100,8 @@ export default function TasksPage() {
           <DataTable columns={columns} rows={list.rows} loading={list.loading} sort={list.sort} onSort={list.toggleSort} onRowClick={(t) => setEditing(t)}
             rowClassName={(t) => (isTaskOverdue(t) ? 'bg-red-50/60' : '')}
             empty={list.isFiltered
-              ? <EmptyState icon={CheckSquare} title="No tasks match" description="Try a different search or clear the filters." />
-              : <EmptyState icon={CheckSquare} title="No tasks yet" description="Add a task to remember a call, email, meeting or follow-up." action={addButton} />} />
+              ? <EmptyState illustration="search" title="No tasks match" description="Try a different search or clear the filters." />
+              : <EmptyState illustration="tasks" title="No tasks yet" description="Add a task to remember a call, email, meeting or follow-up." action={addButton} />} />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} onPage={list.setPage} />
         </>
       )}

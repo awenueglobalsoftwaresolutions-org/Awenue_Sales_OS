@@ -72,20 +72,28 @@ export default function ActivitiesPage() {
   const [adding, setAdding] = useState(false)
 
   const columns = [
-    { key: 'type', header: 'Type', render: (a) => { const Icon = ICONS[a.activity_type]; return <span className="inline-flex items-center gap-2">{Icon && <Icon className="h-4 w-4 text-brand-600" aria-hidden />}<span className="text-xs">{labelOf(ACTIVITY_TYPES, a.activity_type)}</span></span> } },
-    { key: 'title', header: 'Activity', render: (a) => <div className="max-w-md"><p className="font-medium">{a.title}</p>{a.description && <p className="truncate text-xs text-ink-500">{a.description}</p>}</div> },
+    { key: 'type', header: 'Type', render: (a) => {
+      const Icon = ICONS[a.activity_type] || ActivityIcon
+      return (
+        <span className="inline-flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand-600"><Icon className="h-3.5 w-3.5" aria-hidden /></span>
+          <span className="text-xs font-medium text-ink-700">{labelOf(ACTIVITY_TYPES, a.activity_type)}</span>
+        </span>
+      )
+    } },
+    { key: 'title', header: 'Activity', render: (a) => <div className="max-w-md"><p className="font-medium text-ink-900">{a.title}</p>{a.description && <p className="truncate text-xs text-ink-500">{a.description}</p>}</div> },
     { key: 'related', header: 'Related to', render: (a) => {
       const r = a.deal ? ['Deal', a.deal.title] : a.lead ? ['Lead', fullName(a.lead)] : a.contact ? ['Contact', fullName(a.contact)] : a.organization ? ['Organization', a.organization.name] : null
-      return r ? <span className="text-sm"><Badge>{r[0]}</Badge> <span className="ml-1">{r[1]}</span></span> : '—'
+      return r ? <span className="text-sm"><Badge tone="indigo">{r[0]}</Badge> <span className="ml-1 font-medium text-ink-700">{r[1]}</span></span> : '—'
     } },
     { key: 'user', header: 'By', render: (a) => a.user?.full_name || '—' },
-    { key: 'created_at', header: 'When', sortKey: 'created_at', render: (a) => <span className="whitespace-nowrap">{fmtDateTime(a.created_at)}</span> },
+    { key: 'created_at', header: 'When', sortKey: 'created_at', render: (a) => <span className="whitespace-nowrap text-ink-600">{fmtDateTime(a.created_at)}</span> },
   ]
   const addButton = !can('activities.create') ? null : <button className="btn-primary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" />Log activity</button>
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <PageHeader title="Activities" subtitle="Everything that happened, newest first" actions={addButton} />
+    <div className="mx-auto max-w-6xl animate-fade-up">
+      <PageHeader title="Activities" subtitle="Everything that happened, newest first" icon={ActivityIcon} actions={addButton} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search activities" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any type" value={list.filters.activity_type} onChange={(v) => list.setFilter('activity_type', v)} options={ACTIVITY_TYPES} />
         <FilterSelect label="Anyone" value={list.filters.user_id} onChange={(v) => list.setFilter('user_id', v)} options={(users.data || []).map((u) => ({ value: u.id, label: u.full_name || u.email }))} />
@@ -95,8 +103,8 @@ export default function ActivitiesPage() {
           <DataTable columns={columns} rows={list.rows} loading={list.loading} sort={list.sort} onSort={list.toggleSort}
             onRowClick={(a) => { const to = activityLink(a); if (to) navigate(to) }}
             empty={list.isFiltered
-              ? <EmptyState icon={ActivityIcon} title="No activities match" description="Try a different search or clear the filters." />
-              : <EmptyState icon={ActivityIcon} title="No activity yet" description="Calls, emails, meetings, notes, stage changes and completed tasks show up here." action={addButton} />} />
+              ? <EmptyState illustration="search" title="No activities match" description="Try a different search or clear the filters." />
+              : <EmptyState illustration="activities" title="No activity yet" description="Calls, emails, meetings, notes, stage changes and completed tasks show up here." action={addButton} />} />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} onPage={list.setPage} />
         </>
       )}

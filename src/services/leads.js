@@ -70,3 +70,22 @@ export async function convertLead({ leadId, title, value, currency }) {
   if (error) throw error
   return data
 }
+
+export async function getLeadMetrics() {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const [total, newMonth, qualified, converted, followups] = await Promise.all([
+    supabase.from('leads').select('id', { count: 'exact', head: true }),
+    supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', monthStart),
+    supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'qualified'),
+    supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'converted'),
+    supabase.from('tasks').select('id', { count: 'exact', head: true }).in('status', ['pending', 'in_progress']).not('lead_id', 'is', null),
+  ])
+  return {
+    total: total.count ?? 0,
+    newMonth: newMonth.count ?? 0,
+    qualified: qualified.count ?? 0,
+    converted: converted.count ?? 0,
+    followups: followups.count ?? 0,
+  }
+}

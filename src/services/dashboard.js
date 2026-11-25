@@ -28,3 +28,20 @@ export async function listRecentActivities() {
   if (error) throw error
   return data
 }
+
+export async function getLeadSourceBreakdown() {
+  const { data, error } = await supabase.from('leads').select('source, status')
+  if (error) throw error
+  const rows = data || []
+  const sourceCounts = {}
+  const statusCounts = {}
+  for (const r of rows) {
+    const src = r.source || 'other'
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1
+    if (r.status) statusCounts[r.status] = (statusCounts[r.status] || 0) + 1
+  }
+  const bySource = Object.entries(sourceCounts)
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count)
+  return { total: rows.length, bySource, byStatus: statusCounts }
+}

@@ -23,7 +23,7 @@ const PAGE = 25
 const COL_KEY = 'awenue.audit.columns'
 
 const stat = (label, value, danger = false) => (
-  <div key={label} className="rounded-xl border border-ink-100 bg-white p-4 shadow-card"><p className="text-xs font-medium text-ink-500">{label}</p><p className={`mt-1 text-2xl font-bold ${danger ? 'text-red-600' : ''}`}>{value ?? '—'}</p></div>)
+  <div key={label} className="surface-card p-4 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"><p className="text-xs font-medium text-ink-500">{label}</p><p className={`mt-1 text-2xl font-bold tracking-tight ${danger ? 'text-red-600' : 'text-ink-900'}`}>{value ?? '—'}</p></div>)
 
 const filtersReducer = (state, a) => (a.type === 'set' ? { ...state, [a.key]: a.value } : a.type === 'clear' ? { ...EMPTY_FILTERS, userId: a.keepUser ? state.userId : '' } : state)
 const loadColumns = () => { try { const s = JSON.parse(localStorage.getItem(COL_KEY)); if (Array.isArray(s) && s.length) return new Set(s) } catch { /* default */ } return new Set(AUDIT_COLUMNS.map((c) => c.key)) }
@@ -121,7 +121,7 @@ export default function ReportsPage() {
         <AuditFilters filters={filters} setFilter={setFilter} clearFilters={clearFilters} isFiltered={isFiltered} />
 
         {!ready ? (
-          <div className="rounded-xl border border-dashed border-ink-300 bg-white"><EmptyState icon={UserSearch} title="Choose an employee to begin" description="Pick someone in “Any employee” above, then set a date range and, if you like, a time window. Their recorded activity appears here." /></div>
+          <div className="surface-card"><EmptyState illustration="reports" title="Choose an employee to begin" description="Pick someone in “Any employee” above, then set a date range and, if you like, a time window. Their recorded activity appears here." /></div>
         ) : (
           <>
             {summary.loading && !s && <Spinner className="py-4" />}

@@ -3,14 +3,45 @@
 @tailwind utilities;
 
 @layer base {
-  body { @apply bg-ink-50 text-ink-900 antialiased; }
-  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+  html {
+    font-size: 13.5px;
+  }
+  body {
+    @apply bg-ink-50 font-sans text-ink-900 antialiased selection:bg-brand-100 selection:text-brand-800;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2, h3 {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
 }
+
 @layer components {
-  .input { @apply w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60; }
-  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
-  .btn-ghost { @apply btn text-ink-700 hover:bg-ink-100; }
-  .label { @apply mb-1.5 block text-sm font-medium text-ink-700; }
-  .field-error { @apply mt-1 text-xs text-red-600; }
+  .input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 transition duration-150 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100/70;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition duration-150 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow;
+  }
+  .btn-outline {
+    @apply btn border border-ink-200 bg-white text-ink-700 shadow-sm hover:border-ink-300 hover:bg-ink-50;
+  }
+  .btn-ghost {
+    @apply btn text-ink-700 hover:bg-ink-100/80;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink-700;
+  }
+  .field-error {
+    @apply mt-1 text-xs text-red-600;
+  }
+  .surface-card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-card transition duration-200;
+  }
 }

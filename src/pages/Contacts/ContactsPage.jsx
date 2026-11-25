@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Contact, Plus } from 'lucide-react'
+import { Contact, Mail, Phone, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -18,6 +18,7 @@ import ErrorState from '../../components/common/ErrorState'
 import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import RowActions from '../../components/common/RowActions'
+import Avatar from '../../components/common/Avatar'
 import ContactForm from '../../components/forms/ContactForm'
 
 const INITIAL_SORT = { key: 'created_at', dir: 'desc' }
@@ -42,19 +43,23 @@ export default function ContactsPage() {
   const remove = async () => { await deleteContact(deleting.id); toast.success('Contact deleted'); setDeleting(null); list.reload() }
 
   const columns = [
-    { key: 'name', header: 'Name', sortKey: 'first_name', render: (c) => <span className="font-medium">{fullName(c)}</span> },
+    { key: 'name', header: 'Name', sortKey: 'first_name', render: (c) => (
+      <div className="flex items-center gap-2.5">
+        <Avatar person={{ full_name: fullName(c) }} size={30} />
+        <span className="font-medium text-ink-900">{fullName(c)}</span>
+      </div>) },
     { key: 'designation', header: 'Designation' },
-    { key: 'organization', header: 'Organization', render: (c) => c.organization ? <Link className="text-brand-600 hover:underline" to={`/organizations/${c.organization.id}`} onClick={(e) => e.stopPropagation()}>{c.organization.name}</Link> : '—' },
-    { key: 'email', header: 'Email' },
-    { key: 'phone', header: 'Phone' },
+    { key: 'organization', header: 'Organization', render: (c) => c.organization ? <Link className="font-medium text-brand-600 hover:underline" to={`/organizations/${c.organization.id}`} onClick={(e) => e.stopPropagation()}>{c.organization.name}</Link> : '—' },
+    { key: 'email', header: 'Email', render: (c) => c.email ? <span className="inline-flex items-center gap-1.5 text-ink-700"><Mail className="h-3.5 w-3.5 text-ink-400" aria-hidden />{c.email}</span> : '—' },
+    { key: 'phone', header: 'Phone', render: (c) => c.phone ? <span className="inline-flex items-center gap-1.5 text-ink-700"><Phone className="h-3.5 w-3.5 text-ink-400" aria-hidden />{c.phone}</span> : '—' },
     { key: 'created_at', header: 'Added', sortKey: 'created_at', render: (c) => fmtDate(c.created_at) },
     { key: 'actions', header: '', className: 'w-24', render: (c) => <RowActions canEdit={can('contacts.edit')} canDelete={can('contacts.delete')} label={fullName(c)} onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} /> },
   ]
   const addButton = !can('contacts.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add contact</button>
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <PageHeader title="Contacts" subtitle="People at the organizations you sell to" actions={<><CsvTools entity="contacts" list={list} />{addButton}</>} />
+    <div className="mx-auto max-w-6xl animate-fade-up">
+      <PageHeader title="Contacts" subtitle="People at the organizations you sell to" icon={Contact} actions={<><CsvTools entity="contacts" list={list} />{addButton}</>} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search name, email, phone" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <select className="input !w-auto max-w-[220px]" value={list.filters.organization_id || ''} onChange={(e) => list.setFilter('organization_id', e.target.value)} aria-label="Filter by organization">
           <option value="">Any organization</option>
@@ -67,8 +72,8 @@ export default function ContactsPage() {
           <DataTable columns={columns} rows={list.rows} loading={list.loading} sort={list.sort} onSort={list.toggleSort}
             onRowClick={(c) => navigate(`/contacts/${c.id}`)}
             empty={list.isFiltered
-              ? <EmptyState icon={Contact} title="No contacts match" description="Try a different search or clear the filters." />
-              : <EmptyState icon={Contact} title="No contacts yet" description="Add the people you talk to. Converting a lead also creates a contact." action={addButton} />} />
+              ? <EmptyState illustration="search" title="No contacts match" description="Try a different search or clear the filters." />
+              : <EmptyState illustration="contacts" title="No contacts yet" description="Add the people you talk to. Converting a lead also creates a contact." action={addButton} />} />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} onPage={list.setPage} />
         </>
       )}
