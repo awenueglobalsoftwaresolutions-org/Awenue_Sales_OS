@@ -6,7 +6,7 @@ const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/
 
 function mustWebsiteConfig(env) {
   const baseUrl = (env.AWENUE_WEBSITE_API_URL || '').replace(/\/$/, '')
-  const apiKey = env.AWENUE_WEBSITE_API_KEY || ''
+  const apiKey = env.AWENUE_WEBSITE_API_KEY || env.ADMIN_API_KEY || ''
   if (!baseUrl || !apiKey) {
     throw new HttpError(500, 'Website API integration is not configured on the server.')
   }
