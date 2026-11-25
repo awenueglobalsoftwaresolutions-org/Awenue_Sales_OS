@@ -30,18 +30,11 @@ export async function listRecentActivities() {
 }
 
 export async function getLeadSourceBreakdown() {
-  const { data, error } = await supabase.from('leads').select('source, status')
+  // Counted in the database (lead_breakdown, migration 0012). Reading every lead would be silently capped at 1,000 rows.
+  const { data, error } = await supabase.rpc('lead_breakdown')
   if (error) throw error
-  const rows = data || []
-  const sourceCounts = {}
-  const statusCounts = {}
-  for (const r of rows) {
-    const src = r.source || 'other'
-    sourceCounts[src] = (sourceCounts[src] || 0) + 1
-    if (r.status) statusCounts[r.status] = (statusCounts[r.status] || 0) + 1
-  }
-  const bySource = Object.entries(sourceCounts)
-    .map(([source, count]) => ({ source, count }))
-    .sort((a, b) => b.count - a.count)
-  return { total: rows.length, bySource, byStatus: statusCounts }
+  const byStatus = data?.by_status || {}
+  const bySource = (data?.by_source || []).map((x) => ({ source: x.source, count: x.count }))
+  const total = Object.values(byStatus).reduce((n, v) => n + v, 0)
+  return { total, bySource, byStatus }
 }

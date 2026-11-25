@@ -9,7 +9,7 @@ bucket_name = "awenue-org-files"
 [vars]
 SUPABASE_URL = "https://vpbkjtrdsqjyyiypozod.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_SbumP2TY9q94qX9WRz6tLA_91Lp9x0f"          # public anon key, same as the frontend .env
-ALLOWED_ORIGINS = "https://awenuesalesos.vercel.app"            # comma-separated; add your production URL later
+ALLOWED_ORIGINS = "http://localhost:5173,https://awenuesalesos.vercel.app"   # comma-separated: every site that calls this Worker
 MAX_UPLOAD_BYTES = "52428800"                         # 50 MB (Workers free plan caps request bodies at 100 MB)
 GOOGLE_CLIENT_ID = "72870167062-3m7a9d40vu4chnmoq0ja8lp4d21jjb0c.apps.googleusercontent.com"
 GOOGLE_REDIRECT_URI = "https://awenue-files-api.awenueglobalsoftwaresolutions.workers.dev/gmail/callback"
