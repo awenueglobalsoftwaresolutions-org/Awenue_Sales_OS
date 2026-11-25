@@ -121,7 +121,7 @@ export default function WebsiteQueriesPage() {
             <p className="truncate font-semibold text-ink-900">{m.fullName || '—'}</p>
             <div className="flex items-center gap-1.5 text-[11px] text-ink-500">
               {m.email ? (
-                <span className="inline-flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0 text-ink-400" aria-hidden />{m.email}</span>
+                <span className="inline-flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0 text-ink-400" aria-hidden /><span className="truncate">{m.email}</span></span>
               ) : m.phone ? (
                 <span className="inline-flex items-center gap-1 truncate"><Phone className="h-3 w-3 shrink-0 text-ink-400" aria-hidden />{[m.countryCode, m.phone].filter(Boolean).join(' ')}</span>
               ) : '—'}
@@ -145,6 +145,7 @@ export default function WebsiteQueriesPage() {
       key: 'status',
       header: 'Status',
       sortKey: 'status',
+      className: 'whitespace-nowrap',
       render: (m) => (
         <Badge tone={WEBSITE_STATUS_TONE[m.status] || 'gray'}>
           {formatWebsiteStatus(m.status)}
@@ -154,13 +155,17 @@ export default function WebsiteQueriesPage() {
     {
       key: 'assignedTo',
       header: 'Assigned To',
-      render: (m) => <span className="text-xs text-ink-600">{m.assignedTo || '—'}</span>,
+      render: (m) => (
+        m.assignedTo
+          ? <span className="text-xs font-medium text-ink-700">{m.assignedTo}</span>
+          : <span className="whitespace-nowrap rounded-md border border-dashed border-ink-200 px-1.5 py-0.5 text-[11px] text-ink-400">Unassigned</span>
+      ),
     },
     {
       key: 'createdAt',
       header: 'Received',
       sortKey: 'createdAt',
-      className: 'whitespace-nowrap text-xs text-ink-500',
+      className: 'whitespace-nowrap text-[11px] text-ink-500',
       render: (m) => fmtDate(m.createdAt),
     },
   ]
@@ -168,7 +173,7 @@ export default function WebsiteQueriesPage() {
   const isFiltered = Boolean(search || subjectFilter || statusFilter)
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl space-y-4 animate-fade-up">
       <PageHeader
         icon={MessageSquare}
         title="Website Contact Queries"
@@ -184,11 +189,12 @@ export default function WebsiteQueriesPage() {
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <StatTile
           icon={MessageSquare}
           label="Total Messages"
           value={kpis.total}
+          sub="All contact queries"
           tone="brand"
           onClick={() => { setStatusFilter(''); setPage(1) }}
         />
@@ -196,6 +202,7 @@ export default function WebsiteQueriesPage() {
           icon={Sparkles}
           label="Unread / New"
           value={kpis.isNew}
+          sub="Awaiting review"
           tone="sky"
           onClick={() => { setStatusFilter(statusFilter === 'NEW' ? '' : 'NEW'); setPage(1) }}
         />
@@ -203,6 +210,7 @@ export default function WebsiteQueriesPage() {
           icon={Clock}
           label="In Progress"
           value={kpis.inProgress}
+          sub="Being handled"
           tone="amber"
           onClick={() => { setStatusFilter(statusFilter === 'IN_PROGRESS' ? '' : 'IN_PROGRESS'); setPage(1) }}
         />
@@ -210,9 +218,34 @@ export default function WebsiteQueriesPage() {
           icon={CheckCircle2}
           label="Resolved"
           value={kpis.resolved}
+          sub="Completed"
           tone="emerald"
           onClick={() => { setStatusFilter(statusFilter === 'RESOLVED' ? '' : 'RESOLVED'); setPage(1) }}
         />
+      </div>
+
+      {/* Status Pill Tabs */}
+      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter messages by status">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter(''); setPage(1) }}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${!statusFilter ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+        >
+          All Messages
+        </button>
+        {CONTACT_STATUSES.map((st) => {
+          const active = statusFilter === st
+          return (
+            <button
+              key={st}
+              type="button"
+              onClick={() => { setStatusFilter(active ? '' : st); setPage(1) }}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+            >
+              {formatWebsiteStatus(st)}
+            </button>
+          )
+        })}
       </div>
 
       <FilterBar
@@ -249,7 +282,8 @@ export default function WebsiteQueriesPage() {
             onRowClick={(row) => setSelected(row)}
             empty={
               <EmptyState
-                icon={MessageSquare}
+                illustration={isFiltered ? 'search' : undefined}
+                icon={isFiltered ? undefined : MessageSquare}
                 title={isFiltered ? 'No matching contact messages' : 'No contact messages yet'}
                 description={isFiltered ? 'Try adjusting your search or filters.' : 'Contact Us messages from the main website will appear here after syncing.'}
               />

@@ -58,15 +58,15 @@ export default function WebsiteContactModal({ message, profiles = [], canEdit, o
       <div className="space-y-5">
         {/* Sender Info */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-ink-50/60 p-3.5">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-ink-700">
+          <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm text-ink-700">
             {message.email && (
-              <a href={`mailto:${message.email}`} className="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline">
-                <Mail className="h-4 w-4" aria-hidden />{message.email}
+              <a href={`mailto:${message.email}`} className="inline-flex min-w-0 items-center gap-1.5 break-all font-medium text-brand-600 hover:underline">
+                <Mail className="h-4 w-4 shrink-0" aria-hidden />{message.email}
               </a>
             )}
             {phoneDisplay && (
-              <span className="inline-flex items-center gap-1.5">
-                <Phone className="h-4 w-4 text-ink-400" aria-hidden />{phoneDisplay}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Phone className="h-4 w-4 shrink-0 text-ink-400" aria-hidden />{phoneDisplay}
               </span>
             )}
           </div>

@@ -69,25 +69,25 @@ export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, o
       <div className="space-y-5">
         {/* Top Meta */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-ink-50/60 p-3.5">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-ink-700">
+          <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm text-ink-700">
             {enquiry.email && (
-              <a href={`mailto:${enquiry.email}`} className="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline">
-                <Mail className="h-4 w-4" aria-hidden />{enquiry.email}
+              <a href={`mailto:${enquiry.email}`} className="inline-flex min-w-0 items-center gap-1.5 break-all font-medium text-brand-600 hover:underline">
+                <Mail className="h-4 w-4 shrink-0" aria-hidden />{enquiry.email}
               </a>
             )}
             {phoneDisplay && (
-              <span className="inline-flex items-center gap-1.5">
-                <Phone className="h-4 w-4 text-ink-400" aria-hidden />{phoneDisplay}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Phone className="h-4 w-4 shrink-0 text-ink-400" aria-hidden />{phoneDisplay}
               </span>
             )}
             {enquiry.companyName && (
               <span className="inline-flex items-center gap-1.5 font-medium">
-                <Building2 className="h-4 w-4 text-ink-400" aria-hidden />{enquiry.companyName}
+                <Building2 className="h-4 w-4 shrink-0 text-ink-400" aria-hidden />{enquiry.companyName}
               </span>
             )}
             {enquiry.websiteUrl && (
               <a href={enquiry.websiteUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-brand-600 hover:underline">
-                <Globe className="h-4 w-4" aria-hidden />Website<ExternalLink className="h-3 w-3" aria-hidden />
+                <Globe className="h-4 w-4 shrink-0" aria-hidden />Website<ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
               </a>
             )}
           </div>
@@ -146,10 +146,10 @@ export default function WebsiteEnquiryModal({ enquiry, profiles = [], canEdit, o
         </div>
 
         {enquiry.referenceUrl && (
-          <div className="flex items-center gap-2 text-xs text-ink-600">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
             <span className="font-semibold text-ink-500">Reference URL:</span>
-            <a href={enquiry.referenceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-brand-600 hover:underline">
-              {enquiry.referenceUrl}<ExternalLink className="h-3 w-3" aria-hidden />
+            <a href={enquiry.referenceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 break-all text-brand-600 hover:underline">
+              {enquiry.referenceUrl}<ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
             </a>
           </div>
         )}
