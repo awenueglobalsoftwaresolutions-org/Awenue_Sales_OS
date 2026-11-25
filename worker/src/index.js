@@ -26,6 +26,7 @@ export default {
         case 'GET /file': return await files.serveFile(url, env)
         case 'GET /gmail/callback': return await gmail.callback(url, env)
         case 'GET /website/sync': return json(await website.sync(request, url, env), 200, cors)
+        case 'POST /website/webhook': case 'POST /api/website/webhook': return json(await website.webhook(request, env), 200, cors)
         case 'POST /upload': case 'POST /files/upload': return json(await files.upload(request, url, env), 201, cors)
         case 'POST /sign': case 'POST /files/sign': return json(await files.signUrl(request, url, env), 200, cors)
         case 'POST /delete': case 'POST /files/delete': return json(await files.remove(request, env), 200, cors)

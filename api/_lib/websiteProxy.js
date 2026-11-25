@@ -2,11 +2,11 @@ const TIMEOUT_MS = 15000
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/
 
 export function getWebsiteEnv(env = process.env) {
-  const baseUrl = (env.AWENUE_WEBSITE_API_URL || '').replace(/\/$/, '')
-  const apiKey = env.AWENUE_WEBSITE_API_KEY || env.ADMIN_API_KEY || ''
-  const syncEndpoint = (env.AWENUE_CRM_SYNC_ENDPOINT || (baseUrl ? `${baseUrl}/api/crm/sync` : '')).replace(/\/$/, '')
-  const enquiriesEndpoint = (env.AWENUE_PROJECT_ENQUIRIES_ENDPOINT || (baseUrl ? `${baseUrl}/api/project-enquiries` : '')).replace(/\/$/, '')
-  const contactsEndpoint = (env.AWENUE_CONTACT_MESSAGES_ENDPOINT || (baseUrl ? `${baseUrl}/api/contact-messages` : '')).replace(/\/$/, '')
+  const baseUrl = (env.AWENUE_WEBSITE_API_URL || '').replace(/^["']|["']$/g, '').replace(/\/$/, '')
+  const apiKey = (env.AWENUE_WEBSITE_API_KEY || env.ADMIN_API_KEY || '').replace(/^["']|["']$/g, '').trim()
+  const syncEndpoint = (env.AWENUE_CRM_SYNC_ENDPOINT || (baseUrl ? `${baseUrl}/api/crm/sync` : '')).replace(/^["']|["']$/g, '').replace(/\/$/, '')
+  const enquiriesEndpoint = (env.AWENUE_PROJECT_ENQUIRIES_ENDPOINT || (baseUrl ? `${baseUrl}/api/project-enquiries` : '')).replace(/^["']|["']$/g, '').replace(/\/$/, '')
+  const contactsEndpoint = (env.AWENUE_CONTACT_MESSAGES_ENDPOINT || (baseUrl ? `${baseUrl}/api/contact-messages` : '')).replace(/^["']|["']$/g, '').replace(/\/$/, '')
   return { baseUrl, apiKey, syncEndpoint, enquiriesEndpoint, contactsEndpoint }
 }
 
