@@ -3,10 +3,31 @@ node_modules/
 /.pnp
 .pnp.js
 
-# Production and test outputs
+# Production outputs
 dist/
 dist-ssr/
+
+# Tests, Test Scripts, Mocks, and Samples (Security: prevent test script & internal harness exposure)
+test/
+tests/
+__tests__/
+scripts/
+supabase/tests/
+worker/test/
+*.test.*
+*.spec.*
+*.mock.*
+*sample*
+*.sample.*
+invoice-sample.pdf
+
+# Test coverage, snapshots, reports & artifacts
 coverage/
+.nyc_output/
+playwright-report/
+blob-report/
+test-results/
+.playwright-mcp/
 
 # Environment variables & secrets (NEVER commit secrets!)
 .env
@@ -17,7 +38,6 @@ coverage/
 # Cloud provider / CLI caches & local credentials
 .vercel/
 .wrangler/
-.playwright-mcp/
 .turbo/
 
 # Editor and OS files
