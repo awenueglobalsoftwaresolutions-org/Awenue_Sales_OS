@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { KeyRound, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Crown, KeyRound, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -123,27 +123,64 @@ export default function UsersSection() {
               <tbody className="divide-y divide-ink-100">
                 {visible.map((u) => {
                   const me = u.id === profile.id
-                  const locked = u.role === 'super_admin' && !isSuperAdmin
+                  const isFounder = u.email?.toLowerCase() === 'codewithsushil7236@gmail.com'
+                  const locked = (u.role === 'super_admin' && !isSuperAdmin) || isFounder
                   return (
-                    <tr key={u.id}>
-                      <td className="px-4 py-2.5"><div className="flex items-center gap-3"><Avatar person={u} size={32} /><div className="min-w-0"><p className="truncate font-medium">{u.full_name || '—'}{me && <span className="ml-1 text-xs font-normal text-ink-500">(you)</span>}</p><p className="truncate text-xs text-ink-500">{[u.job_title, u.email].filter(Boolean).join(' · ')}</p></div></div></td>
-                      <td className="px-4 py-2.5">{canAssign && !me && !locked
-                        ? <select className="input !w-auto" value={u.role} disabled={busy} aria-label={`Role for ${u.full_name || u.email}`} onChange={(e) => change(u.id, { role: e.target.value }, 'Role updated')}>{(roles.data || []).filter((r) => r.key !== 'super_admin' || isSuperAdmin || u.role === 'super_admin').map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}</select>
-                        : roleName(u.role)}</td>
-                      <td className="px-4 py-2.5">{canAssign && !locked
-                        ? <select className="input !w-auto" value={u.manager_id || ''} disabled={busy} aria-label={`Team lead for ${u.full_name || u.email}`} onChange={(e) => change(u.id, { manager_id: e.target.value || null }, 'Team updated')}><option value="">None</option>{(users.data || []).filter((m) => m.id !== u.id && m.is_active).map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}</select>
-                        : (users.data.find((m) => m.id === u.manager_id)?.full_name || '—')}</td>
-                      <td className="px-4 py-2.5">{canEdit && !me && !locked
-                        ? <button className="btn-ghost !py-1 text-xs" disabled={busy} onClick={() => change(u.id, { is_active: !u.is_active }, u.is_active ? 'User deactivated' : 'User activated')}>{u.is_active ? 'Deactivate' : 'Activate'}</button>
-                        : <Badge tone={u.is_active ? 'green' : 'amber'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>}
-                        {canEdit && !me && !locked && <Badge tone={u.is_active ? 'green' : 'amber'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>}</td>
+                    <tr key={u.id} className={isFounder ? 'bg-amber-50/20' : undefined}>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar person={u} size={32} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="truncate font-semibold text-ink-900">{u.full_name || '—'}</p>
+                              {me && <span className="text-xs font-normal text-ink-500">(you)</span>}
+                              {isFounder && (
+                                <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300">
+                                  <Crown className="h-3 w-3 text-amber-600" /> Founder & Root Admin
+                                </span>
+                              )}
+                            </div>
+                            <p className="truncate text-xs text-ink-500">{[u.job_title, u.email].filter(Boolean).join(' · ')}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {isFounder ? (
+                          <Badge tone="violet">Founder & Super Admin</Badge>
+                        ) : canAssign && !me && !locked ? (
+                          <select className="input !w-auto" value={u.role} disabled={busy} aria-label={`Role for ${u.full_name || u.email}`} onChange={(e) => change(u.id, { role: e.target.value }, 'Role updated')}>{(roles.data || []).filter((r) => r.key !== 'super_admin' || isSuperAdmin || u.role === 'super_admin').map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}</select>
+                        ) : (
+                          roleName(u.role)
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {isFounder ? (
+                          <span className="text-xs font-semibold text-ink-500">Root Organization</span>
+                        ) : canAssign && !locked ? (
+                          <select className="input !w-auto" value={u.manager_id || ''} disabled={busy} aria-label={`Team lead for ${u.full_name || u.email}`} onChange={(e) => change(u.id, { manager_id: e.target.value || null }, 'Team updated')}><option value="">None</option>{(users.data || []).filter((m) => m.id !== u.id && m.is_active).map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}</select>
+                        ) : (
+                          users.data?.find((m) => m.id === u.manager_id)?.full_name || '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {isFounder ? (
+                          <Badge tone="green">Permanent Active</Badge>
+                        ) : canEdit && !me && !locked ? (
+                          <button className="btn-ghost !py-1 text-xs" disabled={busy} onClick={() => change(u.id, { is_active: !u.is_active }, u.is_active ? 'User deactivated' : 'User activated')}>{u.is_active ? 'Deactivate' : 'Activate'}</button>
+                        ) : (
+                          <Badge tone={u.is_active ? 'green' : 'amber'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-ink-500">{fmtDate(u.created_at)}</td>
-                      <td className="px-4 py-2.5"><div className="flex justify-end gap-0.5">
-                        {canEdit && !locked && <button className="btn-ghost !p-1.5" aria-label={`Edit ${u.full_name || u.email}`} onClick={() => setEditing(u)}><Pencil className="h-4 w-4" /></button>}
-                        {canEdit && !locked && <button className="btn-ghost !p-1.5" aria-label={`Send password reset to ${u.email}`} onClick={() => sendReset(u)}><KeyRound className="h-4 w-4" /></button>}
-                        {canDelete && !me && !locked && <button className="btn-ghost !p-1.5 hover:!bg-red-50 hover:!text-red-600" aria-label={`Remove ${u.full_name || u.email}`} onClick={() => setRemoving(u)}><Trash2 className="h-4 w-4" /></button>}
-                      </div></td>
-                    </tr>)
+                      <td className="px-4 py-2.5">
+                        <div className="flex justify-end gap-0.5">
+                          {canEdit && (!locked || me) && <button className="btn-ghost !p-1.5" aria-label={`Edit ${u.full_name || u.email}`} onClick={() => setEditing(u)}><Pencil className="h-4 w-4" /></button>}
+                          {canEdit && <button className="btn-ghost !p-1.5" aria-label={`Send password reset to ${u.email}`} onClick={() => sendReset(u)}><KeyRound className="h-4 w-4" /></button>}
+                          {canDelete && !me && !locked && !isFounder && <button className="btn-ghost !p-1.5 hover:!bg-red-50 hover:!text-red-600" aria-label={`Remove ${u.full_name || u.email}`} onClick={() => setRemoving(u)}><Trash2 className="h-4 w-4" /></button>}
+                        </div>
+                      </td>
+                    </tr>
+                  )
                 })}
                 {!visible.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-500">No users match.</td></tr>}
               </tbody>
@@ -156,7 +193,18 @@ export default function UsersSection() {
       {editing && <EditUserModal user={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); users.reload() }} />}
       <ConfirmDialog open={Boolean(removing)} title="Remove user?" confirmLabel="Remove"
         message={`${removing?.full_name || removing?.email} will lose access permanently and their account will be deleted. Records they created or owned stay in the CRM. To keep their account but stop access, deactivate them instead.`}
-        onConfirm={async () => { await removeUser(removing.id); toast.success('User removed'); setRemoving(null); users.reload() }} onClose={() => setRemoving(null)} />
+        onConfirm={async () => {
+          if (removing?.email?.toLowerCase() === 'codewithsushil7236@gmail.com') {
+            toast.error('The Root Founder & Permanent Super Admin account cannot be removed.')
+            setRemoving(null)
+            return
+          }
+          await removeUser(removing.id)
+          toast.success('User removed')
+          setRemoving(null)
+          users.reload()
+        }}
+        onClose={() => setRemoving(null)} />
     </Card>
   )
 }

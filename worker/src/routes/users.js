@@ -69,9 +69,12 @@ export async function removeUser(request, env) {
   mustUuid(userId, 'user')
   if (userId === me.id) throw new HttpError(400, 'You can\'t remove your own account.')
 
-  const tr = await ctx.sb(`profiles?id=eq.${userId}&select=id,role`)
+  const tr = await ctx.sb(`profiles?id=eq.${userId}&select=id,role,email`)
   const [target] = tr.ok ? await tr.json() : []
   if (!target) throw new HttpError(404, 'User not found.')
+  if (target.email?.toLowerCase() === 'codewithsushil7236@gmail.com') {
+    throw new HttpError(403, 'The Root Founder and Permanent Super Admin account is protected and cannot be removed by anyone.')
+  }
   if (target.role === 'super_admin' && me.role !== 'super_admin') throw new HttpError(403, 'Only a Super Admin can remove a Super Admin.')
 
   // Records they created or owned stay in the CRM (their owner fields become empty). Deactivating is usually the better choice.
