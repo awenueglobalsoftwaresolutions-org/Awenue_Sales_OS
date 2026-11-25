@@ -21,12 +21,12 @@ export default function AppLayout() {
   })
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[100dvh] overflow-hidden bg-ink-50">
       <Sidebar collapsed={collapsed} onToggle={toggle} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 lg:w-[85%] flex-col">
         <Topbar onOpenMobile={() => setMobileOpen(true)} />
-        {profile?.must_change_password && <p role="alert" className="bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">You're using a temporary password. <Link className="font-semibold underline" to="/settings?tab=account">Choose your own now</Link>.</p>}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6"><Outlet /></main>
+        {profile?.must_change_password && <p role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">You're using a temporary password. <Link className="font-semibold underline" to="/settings?tab=account">Choose your own now</Link>.</p>}
+        <main className="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-6"><Outlet /></main>
       </div>
     </div>
   )

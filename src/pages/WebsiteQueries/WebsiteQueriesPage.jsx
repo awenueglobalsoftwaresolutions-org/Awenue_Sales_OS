@@ -173,7 +173,7 @@ export default function WebsiteQueriesPage() {
   const isFiltered = Boolean(search || subjectFilter || statusFilter)
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader
         icon={MessageSquare}
         title="Website Contact Queries"
@@ -189,7 +189,7 @@ export default function WebsiteQueriesPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           icon={MessageSquare}
           label="Total Messages"
@@ -229,7 +229,7 @@ export default function WebsiteQueriesPage() {
         <button
           type="button"
           onClick={() => { setStatusFilter(''); setPage(1) }}
-          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${!statusFilter ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+          className={!statusFilter ? 'tab-pill-active' : 'tab-pill-inactive'}
         >
           All Messages
         </button>
@@ -240,7 +240,7 @@ export default function WebsiteQueriesPage() {
               key={st}
               type="button"
               onClick={() => { setStatusFilter(active ? '' : st); setPage(1) }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+              className={active ? 'tab-pill-active' : 'tab-pill-inactive'}
             >
               {formatWebsiteStatus(st)}
             </button>

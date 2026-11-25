@@ -28,23 +28,23 @@ export default function SettingsPage() {
   const current = tabs.find((t) => t.key === sp.get('tab')) || tabs[0]
   const Section = current.Section
   return (
-    <div className="mx-auto max-w-5xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Settings" subtitle="Manage your profile, workspace, team and preferences" icon={Settings} />
-      <div className="flex flex-col gap-5 md:flex-row">
-        <nav role="tablist" aria-label="Settings sections" className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col">
+      <div className="flex flex-col items-start gap-5 md:flex-row">
+        <nav role="tablist" aria-label="Settings sections" className="surface-card thin-scrollbar flex w-full shrink-0 gap-1 overflow-x-auto p-1.5 md:sticky md:top-0 md:w-56 md:flex-col">
           {tabs.map((t) => {
             const Icon = t.icon
             const active = current.key === t.key
             return (
               <button key={t.key} role="tab" aria-selected={active} onClick={() => setSp({ tab: t.key }, { replace: true })}
-                className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm font-medium transition ${active ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-ink-100'}`}>
+                className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm font-medium transition ${active ? 'bg-brand-50 font-semibold text-brand-700' : 'text-ink-700 hover:bg-ink-50'}`}>
                 <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brand-600' : 'text-ink-400'}`} aria-hidden />
                 {t.label}
               </button>
             )
           })}
         </nav>
-        <div className="min-w-0 flex-1"><Section /></div>
+        <div className="w-full min-w-0 flex-1"><Section /></div>
       </div>
     </div>
   )

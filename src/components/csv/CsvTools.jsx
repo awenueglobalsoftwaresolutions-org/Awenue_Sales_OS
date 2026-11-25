@@ -33,8 +33,8 @@ export default function CsvTools({ entity, list }) {
 
   return (
     <>
-      {can(`${entity}.create`) && <button className="btn-ghost border border-ink-300" onClick={() => setImporting(true)}><Upload className="h-4 w-4" />Import</button>}
-      {can(`${entity}.export`) && <button className="btn-ghost border border-ink-300" onClick={exportAll} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Export</button>}
+      {can(`${entity}.create`) && <button className="btn-outline" onClick={() => setImporting(true)}><Upload className="h-4 w-4" />Import</button>}
+      {can(`${entity}.export`) && <button className="btn-outline" onClick={exportAll} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Export</button>}
       {importing && <CsvImportModal entityKey={entity} onClose={() => setImporting(false)} onDone={list.reload} />}
     </>
   )

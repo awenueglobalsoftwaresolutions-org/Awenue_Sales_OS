@@ -28,38 +28,36 @@ import { WEBSITE_STATUS_TONE, formatWebsiteStatus, normalizeWebsiteEnquiry } fro
 
 const INITIAL_SORT = { key: 'created_at', dir: 'desc' }
 
-function MiniSpark({ color = '#5b5bd6', points = '0,16 14,13 28,15 42,8 56,10 70,3' }) {
-  return (
-    <svg viewBox="0 0 72 20" className="h-5 w-16 shrink-0" fill="none" aria-hidden="true">
-      <polyline points={points} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
+const METRIC_TONES = {
+  brand: { icon: 'bg-brand-50 text-brand-600 ring-brand-200/80', border: 'hover:border-brand-300', active: 'border-brand-500 ring-2 ring-brand-100', bar: 'bg-brand-500' },
+  violet: { icon: 'bg-violet-50 text-violet-600 ring-violet-200/80', border: 'hover:border-violet-300', active: 'border-violet-500 ring-2 ring-violet-100', bar: 'bg-violet-500' },
+  amber: { icon: 'bg-amber-50 text-amber-600 ring-amber-200/80', border: 'hover:border-amber-300', active: 'border-amber-500 ring-2 ring-amber-100', bar: 'bg-amber-500' },
+  sky: { icon: 'bg-sky-50 text-sky-600 ring-sky-200/80', border: 'hover:border-sky-300', active: 'border-sky-500 ring-2 ring-sky-100', bar: 'bg-sky-500' },
+  emerald: { icon: 'bg-emerald-50 text-emerald-600 ring-emerald-200/80', border: 'hover:border-emerald-300', active: 'border-emerald-500 ring-2 ring-emerald-100', bar: 'bg-emerald-500' },
 }
 
-function MetricCard({ icon: Icon, label, value, sub, tone, sparkColor, sparkPoints, active, onClick }) {
-  const tones = {
-    brand: 'bg-brand-50 text-brand-600 ring-brand-100',
-    violet: 'bg-violet-50 text-violet-600 ring-violet-100',
-    amber: 'bg-amber-50 text-amber-600 ring-amber-100',
-    sky: 'bg-sky-50 text-sky-600 ring-sky-100',
-    emerald: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
-  }
+function MetricCard({ icon: Icon, label, value, sub, active, onClick, tone = 'brand' }) {
+  const t = METRIC_TONES[tone] || METRIC_TONES.brand
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group rounded-2xl border bg-white p-4 text-left shadow-card transition duration-150 hover:-translate-y-0.5 hover:shadow-card-hover ${active ? 'border-brand-500 ring-2 ring-brand-100' : 'border-ink-100 hover:border-brand-200'}`}
+      className={`group block w-full rounded-2xl border bg-white p-3.5 sm:p-4 text-left shadow-card transition duration-150 hover:-translate-y-0.5 hover:shadow-card-hover ${active ? t.active : `border-ink-200/80 ${t.border}`}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1 ${tones[tone]}`}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </span>
-        <MiniSpark color={sparkColor} points={sparkPoints} />
+        <p className="truncate text-[11px] font-medium text-ink-500 sm:text-xs">{label}</p>
+        {Icon && (
+          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ring-1 transition group-hover:scale-105 sm:h-9 sm:w-9 ${t.icon}`} aria-hidden>
+            <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+          </span>
+        )}
       </div>
-      <p className="mt-3 text-xs font-medium text-ink-500">{label}</p>
-      <div className="mt-0.5 flex items-baseline justify-between gap-2">
-        <p className="text-2xl font-bold tracking-tight text-ink-900">{value ?? '—'}</p>
-        {sub && <span className="truncate text-[11px] font-medium text-ink-500">{sub}</span>}
+      <div className="mt-1 flex items-baseline justify-between gap-2">
+        <p className="text-xl font-bold tabular-nums tracking-tight text-ink-900 sm:text-2xl">{value ?? '—'}</p>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {sub && <p className="truncate text-[10px] font-medium text-ink-500 sm:text-[11px]">{sub}</p>}
+        <span className={`h-1.5 w-6 rounded-full ${t.bar}`} aria-hidden />
       </div>
     </button>
   )
@@ -221,11 +219,11 @@ export default function LeadsPage() {
   )
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Leads" subtitle="Manage CRM & website enquiries, nurture leads, and convert customers" icon={UserPlus} actions={<>{syncButton}<CsvTools entity="leads" list={list} />{addButton}</>} />
 
       {/* Top Lead Metrics Matrix */}
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <MetricCard
           icon={Users} label="Total leads" value={m.total} sub="CRM + Website"
           tone="brand" sparkColor="#5b5bd6" sparkPoints="0,15 14,12 28,14 42,9 56,7 70,3"
@@ -258,7 +256,7 @@ export default function LeadsPage() {
         <button
           type="button"
           onClick={() => list.setFilter('status', '')}
-          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${!list.filters.status ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+          className={!list.filters.status ? 'tab-pill-active' : 'tab-pill-inactive'}
         >
           All Leads
         </button>
@@ -269,7 +267,7 @@ export default function LeadsPage() {
               key={st.value}
               type="button"
               onClick={() => list.setFilter('status', active ? '' : st.value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50'}`}
+              className={active ? 'tab-pill-active' : 'tab-pill-inactive'}
             >
               {st.label}
             </button>

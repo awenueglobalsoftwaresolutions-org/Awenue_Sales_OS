@@ -118,7 +118,7 @@ export default function PipelinePage() {
   const wonTotals = sumByCurrency(wonDeals)
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-full flex-col gap-3.5 animate-fade-up">
+    <div className="w-full flex min-h-full flex-col gap-4 animate-fade-up">
       <PageHeader
         title="Sales Pipeline"
         subtitle="Drag deals between stages, or use the menu on each card"
@@ -129,7 +129,7 @@ export default function PipelinePage() {
       {/* Pipeline Graphics & Summary Strip */}
       {deals.length > 0 && (
         <div className="space-y-2.5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile icon={Layers} label="Total deals" value={deals.length} sub={`${openDeals.length} active in pipeline`} tone="brand" />
             <StatTile icon={TrendingUp} label="Open pipeline" value={openTotals.length ? openTotals.join(' · ') : '—'} sub="Active opportunities" tone="sky" />
             <StatTile icon={Trophy} label="Won deals" value={wonDeals.length} sub={deals.length ? `${Math.round((wonDeals.length / deals.length) * 100)}% of pipeline` : undefined} tone="emerald" />
@@ -191,7 +191,7 @@ export default function PipelinePage() {
             />
           </div>
         ) : (
-          <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+          <div className="thin-scrollbar flex flex-1 gap-3 overflow-x-auto pb-2">
             {DEAL_STAGES.map((stage) => {
               const items = deals.filter((d) => d.stage === stage.value)
               const totals = sumByCurrency(items)
@@ -204,7 +204,7 @@ export default function PipelinePage() {
                   onDragOver={(e) => { e.preventDefault(); setOverStage(stage.value) }}
                   onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverStage(null) }}
                   onDrop={(e) => onDrop(e, stage.value)}
-                  className={`flex h-full min-w-0 flex-col rounded-2xl border border-t-4 transition duration-150 ${st.top} ${overStage === stage.value ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-200' : 'border-ink-100 bg-ink-50/70'}`}
+                  className={`flex min-h-[340px] w-[250px] shrink-0 flex-col rounded-2xl border border-t-4 transition duration-150 xl:min-w-[215px] xl:flex-1 ${st.top} ${overStage === stage.value ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-200' : 'border-ink-100 bg-ink-50/70'}`}
                 >
                   <header className="p-2.5 pb-2">
                     <div className="flex items-center justify-between gap-1.5">

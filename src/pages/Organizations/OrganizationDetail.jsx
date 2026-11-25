@@ -47,25 +47,39 @@ export default function OrganizationDetail() {
   const remove = async () => { await deleteOrganization(id); toast.success('Organization deleted'); navigate('/organizations', { replace: true }) }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
       <Link to="/organizations" className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"><ChevronLeft className="h-4 w-4" />Organizations</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-2xl font-bold">{o.name}</h1><p className="text-sm text-ink-500">{[o.industry, location(o) !== '—' && location(o)].filter(Boolean).join(' · ')}</p></div>
         <div className="flex gap-2">
-          {can('organizations.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
-          {can('organizations.delete') && <button className="btn-ghost border border-ink-300 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
+          {can('organizations.edit') && <button className="btn-outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
+          {can('organizations.delete') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
       </div>
 
-      <div role="tablist" aria-label="Organization sections" className="flex gap-1 border-b border-ink-100">
-        {[['overview', 'Overview'], ['files', 'Files'], ...(can('invoices.view') ? [['invoices', 'Invoices']] : [])].map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key} onClick={() => setSp(key === 'overview' ? {} : { tab: key }, { replace: true })}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${tab === key ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}</button>
-        ))}
+      <div role="tablist" aria-label="Organization sections" className="flex items-center gap-1 overflow-x-auto border-b border-ink-200">
+        {[['overview', 'Overview'], ['files', 'Files'], ...(can('invoices.view') ? [['invoices', 'Invoices']] : [])].map(([key, label]) => {
+          const active = tab === key
+          return (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setSp(key === 'overview' ? {} : { tab: key }, { replace: true })}
+              className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-xs font-semibold transition ${
+                active
+                  ? 'border-brand-600 text-brand-700'
+                  : 'border-transparent text-ink-500 hover:border-ink-300 hover:text-ink-800'
+              }`}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
       {tab === 'invoices' ? <RecordInvoices column="organization_id" id={id} prefill={fromOrganization(o, contacts.data || [])} /> : tab === 'files' ? <OrgFiles orgId={id} /> : (
       <>
-      <section className="rounded-xl border border-ink-100 bg-white p-5 shadow-card">
+      <section className="surface-card p-5">
         <InfoGrid items={[
           ['Website', o.website && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={/^https?:/.test(o.website) ? o.website : `https://${o.website}`} target="_blank" rel="noreferrer">{o.website}<ExternalLink className="h-3 w-3" /></a>],
           ['LinkedIn', o.linkedin_url && <a className="inline-flex items-center gap-1 text-brand-600 hover:underline" href={o.linkedin_url} target="_blank" rel="noreferrer">Profile<ExternalLink className="h-3 w-3" /></a>],

@@ -89,7 +89,7 @@ export default function InvoiceDetail() {
   const send = async (channel) => { try { await recordSend(id, channel, d.bill_to_email || null); toast.success('Send recorded'); refresh() } catch (e) { toast.error(friendlyError(e)) } }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
       <Link to="/invoices" className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"><ChevronLeft className="h-4 w-4" />Invoices</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

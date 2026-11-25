@@ -52,7 +52,7 @@ export default function DealDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
       <Link to="/deals" className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"><ChevronLeft className="h-4 w-4" />Deals</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -64,12 +64,12 @@ export default function DealDetail() {
           </p>
         </div>
         <div className="flex gap-2">
-          {can('deals.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
-          {can('deals.delete') && <button className="btn-ghost border border-ink-300 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
+          {can('deals.edit') && <button className="btn-outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
+          {can('deals.delete') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
       </div>
 
-      <section className="rounded-xl border border-ink-100 bg-white p-5 shadow-card">
+      <section className="surface-card p-5">
         <div className="mb-4 flex items-center gap-3 border-b border-ink-100 pb-4">
           <label htmlFor="stage" className="text-sm font-medium text-ink-700">Stage</label>
           <select id="stage" className="input !w-auto" value={d.stage} disabled={busy || !can('deals.edit')} onChange={(e) => changeStage(e.target.value)}>

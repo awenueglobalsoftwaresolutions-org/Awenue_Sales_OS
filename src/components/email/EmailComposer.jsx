@@ -105,10 +105,23 @@ export default function EmailComposer({ onClose, context = {}, initial = {}, inc
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div role="tablist" className="flex gap-1">
-          {[['write', 'Write'], ['preview', 'Preview']].map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === k ? 'bg-brand-50 text-brand-700' : 'text-ink-500 hover:bg-ink-100'}`}>{label}</button>))}
+        <div role="tablist" className="flex items-center gap-1">
+          {[['write', 'Write'], ['preview', 'Preview']].map(([k, label]) => {
+            const active = tab === k
+            return (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(k)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  active ? 'bg-brand-50 text-brand-700 shadow-xs' : 'text-ink-500 hover:bg-ink-100'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
         <select className="input !w-auto text-xs" value="" onChange={(e) => e.target.value && insertVar(e.target.value)} aria-label="Insert a field">
           <option value="">Insert field…</option>
@@ -147,8 +160,8 @@ export default function EmailComposer({ onClose, context = {}, initial = {}, inc
           </details>)}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-ink-100 pt-4">
-        <button type="button" className="btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-2.5 border-t border-ink-100 pt-4">
+        <button type="button" className="btn-outline" onClick={onClose} disabled={sending}>Cancel</button>
         <button type="button" className="btn-primary" disabled={!connected || sending || rendered.missing.length > 0} onClick={send}>
           <Send className="h-4 w-4" />{sending ? 'Sending…' : 'Send'}</button>
       </div>

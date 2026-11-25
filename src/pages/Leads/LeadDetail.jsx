@@ -56,7 +56,7 @@ export default function LeadDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
       <Link to="/leads" className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"><ChevronLeft className="h-4 w-4" />Leads</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -69,18 +69,18 @@ export default function LeadDetail() {
         </div>
         <div className="flex flex-wrap gap-2">
           {l.status === 'qualified' && can('leads.edit') && can('deals.create') && <button className="btn-primary" onClick={() => setConverting(true)}><ArrowRightLeft className="h-4 w-4" />Convert to deal</button>}
-          {can('leads.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
-          {can('leads.delete') && <button className="btn-ghost border border-ink-300 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
+          {can('leads.edit') && <button className="btn-outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
+          {can('leads.delete') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
       </div>
 
       {converted && (
-        <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+        <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
           Converted {fmtDate(l.converted_at)}. A <Link className="font-semibold underline" to={l.converted_deal_id ? `/deals/${l.converted_deal_id}` : '/deals'}>deal</Link> was created{l.converted_contact_id && <> and the contact is <Link className="font-semibold underline" to={`/contacts/${l.converted_contact_id}`}>on file</Link></>}.
         </p>
       )}
 
-      <section className="rounded-xl border border-ink-100 bg-white p-5 shadow-card">
+      <section className="surface-card p-5">
         <div className="mb-4 flex items-center gap-3 border-b border-ink-100 pb-4">
           <label htmlFor="status" className="text-sm font-medium text-ink-700">Status</label>
           <select id="status" className="input !w-auto" value={l.status} disabled={converted || statusBusy || !can('leads.edit')} onChange={(e) => changeStatus(e.target.value)}>

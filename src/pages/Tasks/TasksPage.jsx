@@ -80,9 +80,9 @@ export default function TasksPage() {
   const c = counts.data || {}
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Tasks & Follow-ups" subtitle="Calls, emails, meetings and follow-ups" icon={CheckSquare} actions={addButton} />
-      <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile icon={AlertTriangle} label="Overdue" value={c.overdue} danger={c.overdue > 0} tone="emerald" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'overdue') }} />
         <StatTile icon={CalendarClock} label="Due today" value={c.today} tone="amber" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'today') }} />
         <StatTile icon={CalendarDays} label="Next 7 days" value={c.week} tone="sky" onClick={() => { list.setFilter('status', ''); list.setFilter('due', 'week') }} />

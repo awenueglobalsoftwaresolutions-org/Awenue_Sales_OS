@@ -16,8 +16,47 @@ export const ACTIVITY_TYPES = [
 export const MANUAL_ACTIVITY_TYPES = ACTIVITY_TYPES.filter((a) => ['email', 'call', 'meeting', 'note'].includes(a.value))
 export const CURRENCIES = ['USD', 'INR', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD']
 
-export const STATUS_TONE = { new: 'blue', contacted: 'indigo', qualified: 'green', unqualified: 'gray', converted: 'green', lost: 'red' }
+export const STATUS_TONE = { new: 'blue', contacted: 'indigo', qualified: 'amber', unqualified: 'gray', converted: 'green', lost: 'red' }
 export const PRIORITY_TONE = { low: 'gray', medium: 'amber', high: 'red' }
+
+export const STAGE_STYLES = {
+  new: {
+    badge: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+    bar: 'bg-sky-500',
+    border: 'border-sky-200/80 hover:border-sky-300',
+    text: 'text-sky-700',
+  },
+  contacted: {
+    badge: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+    bar: 'bg-indigo-500',
+    border: 'border-indigo-200/80 hover:border-indigo-300',
+    text: 'text-indigo-700',
+  },
+  qualified: {
+    badge: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    bar: 'bg-amber-500',
+    border: 'border-amber-200/80 hover:border-amber-300',
+    text: 'text-amber-700',
+  },
+  unqualified: {
+    badge: 'bg-ink-100 text-ink-700 ring-ink-400/20',
+    bar: 'bg-ink-400',
+    border: 'border-ink-200 hover:border-ink-300',
+    text: 'text-ink-600',
+  },
+  converted: {
+    badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    bar: 'bg-emerald-500',
+    border: 'border-emerald-200/80 hover:border-emerald-300',
+    text: 'text-emerald-700',
+  },
+  lost: {
+    badge: 'bg-red-50 text-red-700 ring-red-600/20',
+    bar: 'bg-red-500',
+    border: 'border-red-200/80 hover:border-red-300',
+    text: 'text-red-700',
+  },
+}
 
 export const labelOf = (list, value) => list.find((o) => o.value === value)?.label ?? value ?? '—'
 

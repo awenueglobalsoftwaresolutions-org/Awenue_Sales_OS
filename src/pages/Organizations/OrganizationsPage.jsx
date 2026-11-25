@@ -63,7 +63,7 @@ export default function OrganizationsPage() {
   const addButton = !can('organizations.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add organization</button>
 
   return (
-    <div className="mx-auto max-w-6xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Organizations" subtitle="Companies you sell to" icon={Building2} actions={<><CsvTools entity="organizations" list={list} />{addButton}</>} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search name, industry, city" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any size" value={list.filters.company_size} onChange={(v) => list.setFilter('company_size', v)} options={COMPANY_SIZES} />

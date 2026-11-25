@@ -15,9 +15,9 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
     <Modal open={open} title={title} onClose={close} size="sm">
       <p className="text-sm text-ink-700">{message}</p>
       {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <div className="mt-5 flex justify-end gap-2">
-        <button className="btn-ghost" onClick={close} disabled={busy}>Cancel</button>
-        <button className="btn bg-red-600 text-white hover:bg-red-700" onClick={run} disabled={busy}>
+      <div className="mt-5 flex justify-end gap-2.5">
+        <button className="btn-outline" onClick={close} disabled={busy}>Cancel</button>
+        <button className="btn bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow" onClick={run} disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}{confirmLabel}
         </button>
       </div>

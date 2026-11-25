@@ -34,7 +34,7 @@ function ColumnMenu({ visible, onChange }) {
   useClickOutside(box, () => setOpen(false), open)
   return (
     <div className="relative" ref={box}>
-      <button className="btn-ghost border border-ink-300" onClick={() => setOpen((o) => !o)}><Columns3 className="h-4 w-4" />Columns</button>
+      <button className="btn-outline" onClick={() => setOpen((o) => !o)}><Columns3 className="h-4 w-4" />Columns</button>
       {open && (
         <div className="absolute z-30 mt-2 w-48 rounded-xl border border-ink-100 bg-white p-2 shadow-lg">
           {AUDIT_COLUMNS.map((c) => (
@@ -100,20 +100,35 @@ export default function ReportsPage() {
 
   return (
     <Gate perm="reports.view">
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="w-full space-y-5 animate-fade-up">
         <PageHeader title="Reports & Audits" subtitle="Everything important that happens in the CRM, searchable and downloadable"
           actions={can('reports.export') && ready && (
             <div className="flex flex-wrap items-center gap-2">
               {downloading && <span className="text-sm text-ink-500">Preparing… {progress[0]} / {progress[1]}</span>}
-              <button className="btn-ghost border border-ink-300" disabled={downloading} onClick={() => download('csv')}><FileText className="h-4 w-4" />CSV</button>
-              <button className="btn-ghost border border-ink-300" disabled={downloading} onClick={() => download('xlsx')}><FileSpreadsheet className="h-4 w-4" />Excel</button>
-              <button className="btn-ghost border border-ink-300" disabled={downloading} onClick={() => download('pdf')}><Download className="h-4 w-4" />PDF</button>
+              <button className="btn-outline" disabled={downloading} onClick={() => download('csv')}><FileText className="h-4 w-4" />CSV</button>
+              <button className="btn-outline" disabled={downloading} onClick={() => download('xlsx')}><FileSpreadsheet className="h-4 w-4" />Excel</button>
+              <button className="btn-outline" disabled={downloading} onClick={() => download('pdf')}><Download className="h-4 w-4" />PDF</button>
             </div>)} />
 
-        <div role="tablist" className="flex gap-1 border-b border-ink-100">
-          {[['user', 'Individual user activity report'], ['all', 'All activity']].map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
-              className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${mode === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>{label}</button>))}
+        <div role="tablist" className="flex items-center gap-1 border-b border-ink-200">
+          {[['user', 'Individual user activity report'], ['all', 'All activity']].map(([k, label]) => {
+            const active = mode === k
+            return (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setMode(k)}
+                className={`-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-xs font-semibold transition ${
+                  active
+                    ? 'border-brand-600 text-brand-700'
+                    : 'border-transparent text-ink-500 hover:border-ink-300 hover:text-ink-800'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Locations come from IP addresses and are approximate: VPNs, proxies and mobile networks can make them wrong. They are not GPS positions. An address marked * came from a header the sender could set, so treat it as unverified.</p>
@@ -128,7 +143,7 @@ export default function ReportsPage() {
             {summary.error && <ErrorState message={summary.error} onRetry={summary.reload} />}
             {s && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                   {stat('Total activities', s.total)}{stat('Successful', s.success)}{stat('Failed', s.failed, s.failed > 0)}{stat('Failed logins', s.failed_logins, s.failed_logins > 0)}{stat('Created', s.created)}{stat('Updated', s.updated)}
                   {stat('Deleted', s.deleted)}{stat('Emails sent', s.emails_sent)}{stat('WhatsApp sent', s.whatsapp_sent)}{stat('Unique IPs', s.unique_ips)}
                   {stat('Locations', (s.locations || []).filter((l) => l.location).length)}{stat('Last activity', s.last_at ? new Date(s.last_at).toLocaleDateString('en-GB', { timeZone: tz }) : '—')}
@@ -136,10 +151,10 @@ export default function ReportsPage() {
               </div>)}
 
             <div className="flex flex-wrap items-center gap-2">
-              <button className="btn-ghost border border-ink-300" onClick={() => setShowCharts((v) => !v)}><Activity className="h-4 w-4" />{showCharts ? 'Hide charts' : 'Show charts'}</button>
+              <button className="btn-outline" onClick={() => setShowCharts((v) => !v)}><Activity className="h-4 w-4" />{showCharts ? 'Hide charts' : 'Show charts'}</button>
               <ColumnMenu visible={visible} onChange={toggleColumn} />
-              {can('reports.manage') && <button className="btn-ghost border border-ink-300" onClick={() => { setRetentionDays(retention.data || 365); setRetentionEdit(true) }}>Retention policy</button>}
-              {can('reports.manage') && <button className="btn-ghost border border-red-200 !text-red-600" onClick={() => setPurging(true)}><Trash2 className="h-4 w-4" />Purge old records</button>}
+              {can('reports.manage') && <button className="btn-outline" onClick={() => { setRetentionDays(retention.data || 365); setRetentionEdit(true) }}>Retention policy</button>}
+              {can('reports.manage') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setPurging(true)}><Trash2 className="h-4 w-4" />Purge old records</button>}
             </div>
             {showCharts && s && <Suspense fallback={<Spinner className="py-10" />}><SummaryCharts summary={s} tz={tz} /></Suspense>}
 

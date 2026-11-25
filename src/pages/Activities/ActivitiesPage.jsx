@@ -92,7 +92,7 @@ export default function ActivitiesPage() {
   const addButton = !can('activities.create') ? null : <button className="btn-primary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" />Log activity</button>
 
   return (
-    <div className="mx-auto max-w-6xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Activities" subtitle="Everything that happened, newest first" icon={ActivityIcon} actions={addButton} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search activities" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any type" value={list.filters.activity_type} onChange={(v) => list.setFilter('activity_type', v)} options={ACTIVITY_TYPES} />

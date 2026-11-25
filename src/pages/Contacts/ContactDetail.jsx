@@ -38,17 +38,17 @@ export default function ContactDetail() {
   const remove = async () => { await deleteContact(id); toast.success('Contact deleted'); navigate('/contacts', { replace: true }) }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
       <Link to="/contacts" className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"><ChevronLeft className="h-4 w-4" />Contacts</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-2xl font-bold">{fullName(c)}</h1><p className="text-sm text-ink-500">{[c.designation, c.organization?.name].filter(Boolean).join(' at ')}</p></div>
         <div className="flex gap-2">
-          {can('contacts.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
-          {can('contacts.delete') && <button className="btn-ghost border border-ink-300 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
+          {can('contacts.edit') && <button className="btn-outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
+          {can('contacts.delete') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
       </div>
 
-      <section className="rounded-xl border border-ink-100 bg-white p-5 shadow-card">
+      <section className="surface-card p-5">
         <InfoGrid items={[
           ['Email', c.email && <a className="text-brand-600 hover:underline" href={`mailto:${c.email}`}>{c.email}</a>],
           ['Phone', c.phone],

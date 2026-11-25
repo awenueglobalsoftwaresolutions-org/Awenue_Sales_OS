@@ -63,7 +63,7 @@ export default function DealsPage() {
   const addButton = !can('deals.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add deal</button>
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Deals" subtitle="Opportunities you're working on" icon={Handshake} actions={<><Link to="/pipeline" className="btn-outline"><KanbanSquare className="h-4 w-4" />Pipeline view</Link>{addButton}</>} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search deal title" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <FilterSelect label="Any stage" value={list.filters.stage} onChange={(v) => list.setFilter('stage', v)} options={DEAL_STAGES} />

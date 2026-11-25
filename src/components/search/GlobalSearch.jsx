@@ -40,10 +40,10 @@ export default function GlobalSearch() {
   const showPanel = open && term.length > 0
 
   return (
-    <div ref={wrap} className="relative max-w-md flex-1">
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden />
+    <div ref={wrap} className="relative min-w-0 max-w-md flex-1">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 sm:left-3.5" aria-hidden />
       <input
-        className="input !rounded-xl !bg-ink-50/70 !pl-10 !pr-16 focus:!bg-white"
+        className="input !rounded-xl !bg-ink-50/70 !pl-9 !pr-3 focus:!bg-white sm:!pl-10 sm:!pr-16"
         role="combobox"
         aria-expanded={showPanel}
         aria-controls="global-search-results"

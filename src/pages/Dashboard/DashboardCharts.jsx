@@ -2,9 +2,7 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, Responsiv
 import { BarChart3, Compass, KanbanSquare, PieChart as PieIcon } from 'lucide-react'
 import { DEAL_STAGES, LEAD_SOURCES, labelOf } from '../../constants/options'
 import { EmptyIllustration } from '../../components/common/Graphics'
-
-const STAGE_COLORS = ['#0ea5e9', '#6366f1', '#8b5cf6', '#f59e0b', '#f97316', '#10b981', '#f43f5e']
-const SOURCE_COLORS = ['#5b5bd6', '#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#94a3b8']
+import { SOURCE_COLORS, STAGE_COLORS, THEME_COLORS } from '../../constants/themeColors'
 
 const TOOLTIP_STYLE = {
   borderRadius: '10px',
@@ -15,14 +13,22 @@ const TOOLTIP_STYLE = {
   padding: '6px 10px',
 }
 
-function ChartCard({ title, subtitle, badge, icon: Icon, children, empty }) {
+const CHART_TONES = {
+  brand: { icon: 'border-brand-200 bg-brand-50 text-brand-600', badge: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200' },
+  violet: { icon: 'border-violet-200 bg-violet-50 text-violet-600', badge: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200' },
+  emerald: { icon: 'border-emerald-200 bg-emerald-50 text-emerald-600', badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
+  sky: { icon: 'border-sky-200 bg-sky-50 text-sky-600', badge: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' },
+}
+
+function ChartCard({ title, subtitle, badge, icon: Icon, children, empty, tone = 'brand' }) {
+  const t = CHART_TONES[tone] || CHART_TONES.brand
   return (
-    <section className="surface-card flex flex-col p-4">
+    <section className="surface-card flex h-full flex-col p-4 transition hover:shadow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="flex items-center gap-1.5 text-xs font-semibold text-ink-900">
             {Icon && (
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600 ring-1 ring-brand-100" aria-hidden>
+              <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border ${t.icon}`} aria-hidden>
                 <Icon className="h-3.5 w-3.5" />
               </span>
             )}
@@ -31,7 +37,7 @@ function ChartCard({ title, subtitle, badge, icon: Icon, children, empty }) {
           {subtitle && <p className="mt-0.5 truncate text-[11px] text-ink-500">{subtitle}</p>}
         </div>
         {badge && (
-          <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.badge}`}>
             {badge}
           </span>
         )}
@@ -76,9 +82,10 @@ export default function DashboardCharts({ stats, leadBreakdown }) {
   const topSource = sources[0]
 
   return (
-    <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 lg:gap-5 md:grid-cols-2 xl:grid-cols-4">
       {/* 1. Lead Acquisition Bar Chart */}
       <ChartCard
+        tone="brand"
         title="Lead acquisition"
         subtitle="Last 6 months"
         badge={total6m > 0 ? `${total6m} total` : null}
@@ -108,6 +115,7 @@ export default function DashboardCharts({ stats, leadBreakdown }) {
 
       {/* 2. Lead Sources Pie / Donut Chart */}
       <ChartCard
+        tone="emerald"
         title="Lead sources"
         subtitle={topSource ? `Top: ${topSource.name}` : 'Where leads come from'}
         badge={sourceTotal > 0 ? `${sourceTotal}` : null}
@@ -150,6 +158,7 @@ export default function DashboardCharts({ stats, leadBreakdown }) {
 
       {/* 3. Deal Conversion Donut */}
       <ChartCard
+        tone="violet"
         title="Deal conversion"
         subtitle={winRate === null ? 'Win rate once closed' : `${winRate}% win rate`}
         badge={outcomeTotal > 0 ? `${outcomeTotal}` : null}
@@ -194,6 +203,7 @@ export default function DashboardCharts({ stats, leadBreakdown }) {
 
       {/* 4. Sales Pipeline Stage Distribution */}
       <ChartCard
+        tone="sky"
         title="Sales pipeline"
         subtitle="Deals per stage"
         icon={KanbanSquare}
@@ -201,10 +211,10 @@ export default function DashboardCharts({ stats, leadBreakdown }) {
       >
         <div className="h-52 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={byStage} layout="vertical" margin={{ top: 2, right: 22, left: 2, bottom: 2 }}>
+            <BarChart data={byStage} layout="vertical" margin={{ top: 2, right: 22, left: 0, bottom: 2 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eceef3" />
               <XAxis type="number" allowDecimals={false} fontSize={10} stroke="#6b7185" axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="stage" width={88} tickLine={false} axisLine={false} fontSize={10} stroke="#3b4050" />
+              <YAxis type="category" dataKey="stage" width={96} tickLine={false} axisLine={false} fontSize={10} stroke="#3b4050" />
               <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: '#f6f7fa' }} />
               <Bar dataKey="count" name="Deals" radius={[0, 5, 5, 0]} maxBarSize={14} background={{ fill: '#f6f7fa', radius: 5 }}>
                 {byStage.map((s) => <Cell key={s.stage} fill={s.color} />)}

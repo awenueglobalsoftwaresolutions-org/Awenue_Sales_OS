@@ -58,7 +58,7 @@ export default function ContactsPage() {
   const addButton = !can('contacts.create') ? null : <button className="btn-primary" onClick={() => setEditing({})}><Plus className="h-4 w-4" />Add contact</button>
 
   return (
-    <div className="mx-auto max-w-6xl animate-fade-up">
+    <div className="w-full space-y-5 animate-fade-up">
       <PageHeader title="Contacts" subtitle="People at the organizations you sell to" icon={Contact} actions={<><CsvTools entity="contacts" list={list} />{addButton}</>} />
       <FilterBar search={list.search} onSearch={list.setSearch} placeholder="Search name, email, phone" isFiltered={list.isFiltered} onClear={list.clearFilters}>
         <select className="input !w-auto max-w-[220px]" value={list.filters.organization_id || ''} onChange={(e) => list.setFilter('organization_id', e.target.value)} aria-label="Filter by organization">

@@ -52,10 +52,10 @@ export default function InvoicesPage() {
 
   return (
     <Gate perm="invoices.view">
-      <div className="mx-auto max-w-7xl space-y-4 animate-fade-up">
+      <div className="w-full space-y-5 animate-fade-up">
         <PageHeader title="Invoices" subtitle="Generate, track and collect payments" icon={Receipt} actions={addButton} />
         {s && (
-          <div className="grid grid-cols-2 gap-3.5 md:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             <StatTile icon={FileEdit} label="Drafts" value={s.drafts} to="?status=draft" tone="brand" />
             <StatTile icon={Send} label="Outstanding" value={money(s.outstanding)} to="?status=sent" tone="sky" />
             <StatTile icon={AlertCircle} label="Overdue" value={money(s.overdue)} to="?status=overdue" danger={hasOverdue} tone="amber" />
