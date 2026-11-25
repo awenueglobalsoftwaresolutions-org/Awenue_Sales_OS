@@ -10,13 +10,15 @@ export function getWebsiteEnv(env = process.env) {
   return { baseUrl, apiKey, syncEndpoint, enquiriesEndpoint, contactsEndpoint }
 }
 
-export async function verifySupabaseAuth(authHeader, env = process.env) {
+export async function verifySupabaseAuth(authHeader, env = process.env, requiredPerm = null) {
   const token = (authHeader || '').startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
   if (!token) return { ok: false, status: 401, error: 'Please sign in again.' }
 
   const supabaseUrl = (env.VITE_SUPABASE_URL || env.SUPABASE_URL || '').replace(/\/$/, '')
   const supabaseAnon = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || ''
-  if (!supabaseUrl || !supabaseAnon) return { ok: true }
+  if (!supabaseUrl || !supabaseAnon) {
+    return { ok: false, status: 500, error: 'Authentication is not configured on the server.' }
+  }
 
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -24,6 +26,18 @@ export async function verifySupabaseAuth(authHeader, env = process.env) {
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return { ok: false, status: 401, error: 'Your session has expired. Please sign in again.' }
+
+    if (requiredPerm) {
+      const permRes = await fetch(`${supabaseUrl}/rest/v1/rpc/has_permission`, {
+        method: 'POST',
+        headers: { apikey: supabaseAnon, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_key: requiredPerm }),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!permRes.ok || (await permRes.json().catch(() => false)) !== true) {
+        return { ok: false, status: 403, error: 'You do not have permission to do that.' }
+      }
+    }
     return { ok: true }
   } catch {
     return { ok: false, status: 502, error: 'Could not verify session.' }

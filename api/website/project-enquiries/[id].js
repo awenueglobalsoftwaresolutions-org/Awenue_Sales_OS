@@ -2,7 +2,7 @@ import { forwardWebsiteRequest, getWebsiteEnv, pickPatchBody, sanitizeId, verify
 
 export default async function handler(req, res) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' })
-  const auth = await verifySupabaseAuth(req.headers.authorization)
+  const auth = await verifySupabaseAuth(req.headers.authorization, process.env, 'leads.edit')
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error })
 
   const id = sanitizeId(Array.isArray(req.query?.id) ? req.query.id[0] : req.query?.id)

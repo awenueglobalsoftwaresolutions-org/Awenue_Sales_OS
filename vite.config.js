@@ -42,7 +42,8 @@ function websiteApiProxyPlugin(env) {
     const url = new URL(req.url, 'http://localhost')
     if (!url.pathname.startsWith('/api/website/')) return next()
 
-    const auth = await verifySupabaseAuth(req.headers.authorization, env)
+    const perm = req.method === 'PATCH' ? 'leads.edit' : 'leads.view'
+    const auth = await verifySupabaseAuth(req.headers.authorization, env, perm)
     if (!auth.ok) return sendJson(res, auth.status, { error: auth.error })
 
     const cfg = getWebsiteEnv(env)
