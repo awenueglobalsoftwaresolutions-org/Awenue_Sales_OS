@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Clock, RefreshCw } from 'lucide-react'
-import { syncWebsiteData } from '../../services/website'
+import { useAuth } from '../../contexts/AuthContext'
+import { syncAndPersistWebsiteData } from '../../services/websiteSync'
 import { fmtDateTime } from '../../lib/format'
 
 export function useWebsiteSync(type = 'all') {
+  const { profile } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -15,7 +17,7 @@ export function useWebsiteSync(type = 'all') {
     else setLoading((prev) => (data ? prev : true))
     setError(null)
     try {
-      const res = await syncWebsiteData({ type, limit: 200 })
+      const res = await syncAndPersistWebsiteData(profile, { type, limit: 200 })
       setData(res)
     } catch (e) {
       setError(e?.message || 'Failed to sync with the main website.')
@@ -23,7 +25,7 @@ export function useWebsiteSync(type = 'all') {
       setLoading(false)
       setSyncing(false)
     }
-  }, [type])
+  }, [type, profile])
 
   useEffect(() => {
     load(false)

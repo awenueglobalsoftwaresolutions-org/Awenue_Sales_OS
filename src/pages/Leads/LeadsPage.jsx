@@ -110,8 +110,17 @@ export default function LeadsPage() {
     })
   }, [normalizedWebLeads, list.search, list.filters])
 
+  useEffect(() => {
+    if (webSync.data?.stats?.leadsCreated || webSync.data?.stats?.leadsUpdated) {
+      list.reload()
+      metrics.reload()
+    }
+  }, [webSync.data])
+
   const combinedRows = useMemo(() => {
-    const base = list.page === 1 ? [...filteredWebLeads, ...list.rows] : list.rows
+    const existingEmails = new Set(list.rows.map((r) => r.email?.toLowerCase()).filter(Boolean))
+    const unpersistedWebLeads = filteredWebLeads.filter((l) => !existingEmails.has(l.email?.toLowerCase()))
+    const base = list.page === 1 ? [...unpersistedWebLeads, ...list.rows] : list.rows
     const dir = list.sort.dir === 'asc' ? 1 : -1
     return [...base].sort((a, b) => {
       const av = a[list.sort.key] ?? ''
