@@ -123,12 +123,7 @@ export default function UsersSection() {
               <tbody className="divide-y divide-ink-100">
                 {visible.map((u) => {
                   const me = u.id === profile.id
-                  const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase().trim()
-                  const isFounder = Boolean(
-                    u.is_permanent ||
-                    (u.role === 'super_admin' && /founder|cto/i.test(u.job_title || '')) ||
-                    (founderEmail && u.email?.toLowerCase() === founderEmail)
-                  )
+                  const isFounder = Boolean(u.is_permanent)
                   const locked = (u.role === 'super_admin' && !isSuperAdmin) || isFounder
                   return (
                     <tr key={u.id} className={isFounder ? 'bg-amber-50/20' : undefined}>
@@ -141,7 +136,7 @@ export default function UsersSection() {
                               {me && <span className="text-xs font-normal text-ink-500">(you)</span>}
                               {isFounder && (
                                 <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300">
-                                  <Crown className="h-3 w-3 text-amber-600" /> Founder and CTO
+                                  <Crown className="h-3 w-3 text-amber-600" /> Protected
                                 </span>
                               )}
                             </div>
@@ -151,7 +146,7 @@ export default function UsersSection() {
                       </td>
                       <td className="px-4 py-2.5">
                         {isFounder ? (
-                          <Badge tone="violet">Founder and CTO</Badge>
+                          <Badge tone="violet">Protected</Badge>
                         ) : canAssign && !me && !locked ? (
                           <select className="input !w-auto" value={u.role} disabled={busy} aria-label={`Role for ${u.full_name || u.email}`} onChange={(e) => change(u.id, { role: e.target.value }, 'Role updated')}>{(roles.data || []).filter((r) => r.key !== 'super_admin' || isSuperAdmin || u.role === 'super_admin').map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}</select>
                         ) : (
@@ -199,11 +194,9 @@ export default function UsersSection() {
       <ConfirmDialog open={Boolean(removing)} title="Remove user?" confirmLabel="Remove"
         message={`${removing?.full_name || removing?.email} will lose access permanently and their account will be deleted. Records they created or owned stay in the CRM. To keep their account but stop access, deactivate them instead.`}
         onConfirm={async () => {
-          const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase().trim()
           const isProtected = Boolean(
             removing?.is_permanent ||
-            (removing?.role === 'super_admin' && /founder|cto/i.test(removing?.job_title || '')) ||
-            (founderEmail && removing?.email?.toLowerCase() === founderEmail)
+            removing?.is_permanent
           )
           if (isProtected) {
             toast.error('The Founder and CTO account is permanently protected and cannot be removed.')

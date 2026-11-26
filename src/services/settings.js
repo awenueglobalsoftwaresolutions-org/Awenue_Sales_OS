@@ -34,7 +34,7 @@ export const updateService = (id, patch) => mustAffect(supabase.from('services')
 export const setServiceActive = (id, is_active) => mustAffect(supabase.from('services').update({ is_active }).eq('id', id))
 
 // ---- users ----
-export const listUsers = () => rows(supabase.from('profiles').select('id,full_name,email,role,is_active,created_at,avatar_url,job_title,department,phone,manager_id').order('created_at'))
+export const listUsers = () => rows(supabase.from('profiles').select('id,full_name,email,role,is_active,created_at,avatar_url,job_title,department,phone,manager_id,is_permanent').order('created_at'))
 export const updateUser = (id, patch) => mustAffect(supabase.from('profiles').update(patch).eq('id', id))
 export const createUser = (payload) => apiPost('/users/create', payload)
 export const removeUser = (userId) => apiPost('/users/remove', { userId })
