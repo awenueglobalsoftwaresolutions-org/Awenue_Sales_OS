@@ -1,4 +1,4 @@
-import { LayoutDashboard, UserPlus, MessageSquare, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, FileText, Receipt, Settings } from 'lucide-react'
+import { FolderKanban, LifeBuoy, LayoutDashboard, UserPlus, MessageSquare, Building2, Contact, Handshake, KanbanSquare, CheckSquare, Activity, FileText, Receipt, Settings } from 'lucide-react'
 
 export const NAV_GROUPS = [
   {
@@ -16,6 +16,13 @@ export const NAV_GROUPS = [
       { perm: 'contacts.view', to: '/contacts', label: 'Contacts', icon: Contact },
       { perm: 'deals.view', to: '/deals', label: 'Deals', icon: Handshake },
       { perm: 'deals.view', to: '/pipeline', label: 'Sales Pipeline', icon: KanbanSquare },
+    ],
+  },
+  {
+    title: 'Delivery',
+    items: [
+      { perm: 'projects.view', to: '/projects', label: 'Projects', icon: FolderKanban },
+      { perm: 'tickets.view', to: '/tickets', label: 'Support tickets', icon: LifeBuoy },
     ],
   },
   {

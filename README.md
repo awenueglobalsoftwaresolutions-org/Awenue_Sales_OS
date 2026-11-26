@@ -149,3 +149,23 @@ Set up the Google connection first (see docs/DEPLOYMENT.md > Gmail setup).
 - [ ] Disconnect Gmail in Settings; sending is refused until you reconnect
 
 Limits to know: replies arrive in each person's normal Gmail (the app can't read the inbox without a much stricter Google review); read and open tracking aren't available from Gmail; the hourly limit is 200 emails per person, and Gmail's own daily limits also apply.
+
+## Projects & support tickets
+Migration: `supabase/migrations/0018_projects_and_tickets.sql` (run it after 0017).
+
+- **Projects** belong to a client organization. Creating one copies the workspace's stage templates (Requirement Gathering → Deployment) into the project. Admins with `projects.manage` edit those templates on the Projects page ("Stages").
+- **Progress** is the share of stages marked done, calculated by the database. Every status and stage change is written to the project's update log, which can't be edited.
+- **Reminders** have a title, description, due date, assignee, priority and completion status.
+- **Support tickets** are raised against a project and must match its client. Categories: bug report, technical issue, feature request, enhancement request, UI/UX issue, general query, other. A ticket can't be resolved without a resolution, and closing needs `tickets.approve`. Assignment needs `tickets.assign`.
+- **History** of tickets is append-only. Projects and tickets are also in the audit trail.
+- Permissions: `projects.*` and `tickets.*` are granted to the existing roles (Super Admin and Admin: all; Sales Manager: everything except nothing else; Sales Representative: view, create and edit). Adjust them on Settings > Roles & permissions.
+
+### Projects & tickets checklist
+- [ ] Projects > New project: pick a client, the project gets seven stages
+- [ ] Stages tab: change a stage to done and record the work completed; progress updates
+- [ ] Updates tab: post a progress update and a remark; status changes appear automatically
+- [ ] Reminders tab: add a reminder with a due date, mark it done
+- [ ] Organization > Projects tab lists the client's projects and tickets
+- [ ] Support tickets > Raise ticket: an issue against a project; it appears in the project's tickets tab
+- [ ] Ticket: set status, assign, resolve with a resolution, then close (needs the Approve permission)
+- [ ] A Sales Representative can't close tickets or delete projects

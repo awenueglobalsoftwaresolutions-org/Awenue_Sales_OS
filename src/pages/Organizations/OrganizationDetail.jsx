@@ -21,6 +21,7 @@ import ActivityTimeline from '../../components/common/ActivityTimeline'
 import RecordTasks from '../../components/common/RecordTasks'
 import OrganizationForm from '../../components/forms/OrganizationForm'
 import OrgFiles from '../../components/files/OrgFiles'
+import OrgProjects from '../../components/projects/OrgProjects'
 import RecordInvoices from '../../components/invoices/RecordInvoices'
 import RecordEmails from '../../components/email/RecordEmails'
 import { fromOrganization } from '../../lib/invoicePrefill'
@@ -34,7 +35,7 @@ export default function OrganizationDetail() {
   const leads = useFetch(() => listLeadsByOrganization(id), [id])
   const deals = useFetch(() => listDealsByOrganization(id), [id])
   const [sp, setSp] = useSearchParams()
-  const tab = ['files', 'invoices'].includes(sp.get('tab')) ? sp.get('tab') : 'overview'
+  const tab = ['files', 'invoices', 'projects'].includes(sp.get('tab')) ? sp.get('tab') : 'overview'
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -58,7 +59,7 @@ export default function OrganizationDetail() {
       </div>
 
       <div role="tablist" aria-label="Organization sections" className="flex items-center gap-1 overflow-x-auto border-b border-ink-200">
-        {[['overview', 'Overview'], ['files', 'Files'], ...(can('invoices.view') ? [['invoices', 'Invoices']] : [])].map(([key, label]) => {
+        {[['overview', 'Overview'], ['files', 'Files'], ...(can('invoices.view') ? [['invoices', 'Invoices']] : []), ...(can('projects.view') ? [['projects', 'Projects']] : [])].map(([key, label]) => {
           const active = tab === key
           return (
             <button
@@ -77,7 +78,7 @@ export default function OrganizationDetail() {
           )
         })}
       </div>
-      {tab === 'invoices' ? <RecordInvoices column="organization_id" id={id} prefill={fromOrganization(o, contacts.data || [])} /> : tab === 'files' ? <OrgFiles orgId={id} /> : (
+      {tab === 'projects' ? <OrgProjects org={o} /> : tab === 'invoices' ? <RecordInvoices column="organization_id" id={id} prefill={fromOrganization(o, contacts.data || [])} /> : tab === 'files' ? <OrgFiles orgId={id} /> : (
       <>
       <section className="surface-card p-5">
         <InfoGrid items={[
