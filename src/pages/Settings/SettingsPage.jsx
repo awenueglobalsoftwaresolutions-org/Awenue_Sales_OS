@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
-import { Briefcase, Building2, FileText, GitBranch, KeyRound, Mail, Receipt, Settings, Shield, UserRound, Users } from 'lucide-react'
+import { Briefcase, Building2, FileText, GitBranch, KeyRound, Mail, MailCheck, Receipt, Settings, Shield, UserRound, Users } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import PageHeader from '../../components/common/PageHeader'
 import { AccountSection, OrganizationSection, ProfileSection, ReferenceSection, ServicesSection } from './Sections'
@@ -7,6 +7,7 @@ import UsersSection from './UsersSection'
 import RolesSection from './RolesSection'
 import InvoiceSettingsSection from './InvoiceSettingsSection'
 import { EmailAccountSection, EmailTemplatesSection } from './EmailSections'
+import EmailNotificationsSection from './EmailNotificationsSection'
 
 const TABS = [
   { key: 'profile', label: 'Profile', icon: UserRound, Section: ProfileSection },
@@ -19,6 +20,7 @@ const TABS = [
   { key: 'invoices', label: 'Invoice settings', icon: Receipt, Section: InvoiceSettingsSection, perm: 'invoices.view' },
   { key: 'email', label: 'Email account', icon: Mail, Section: EmailAccountSection, perm: 'communications.view' },
   { key: 'templates', label: 'Email templates', icon: FileText, Section: EmailTemplatesSection, perm: 'communications.view' },
+  { key: 'email-notifications', label: 'Email notifications', icon: MailCheck, Section: EmailNotificationsSection, perm: 'communications.view' },
 ]
 
 export default function SettingsPage() {

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { apiPost } from './api'
 import { searchFilter } from '../lib/query'
 
 const run = async (q) => { const { data, error } = await q; if (error) throw error; return data }
@@ -34,7 +35,14 @@ export async function upsertInvoiceSettings(values, workspaceId) {
 export const saveInvoice = (invoice, items) => supabase.rpc('save_invoice', { p_invoice: invoice, p_items: items }).then(({ data, error }) => { if (error) throw error; return data })
 export const duplicateInvoice = (id) => supabase.rpc('duplicate_invoice', { p_id: id }).then(({ data, error }) => { if (error) throw error; return data })
 export const recordSend = (id, channel, recipient, note) => supabase.rpc('record_invoice_send', { p_id: id, p_channel: channel, p_recipient: recipient, p_note: note }).then(({ error }) => { if (error) throw error })
-export const addPayment = (payload) => supabase.from('invoice_payments').insert(payload).then(({ error }) => { if (error) throw error })
+export const addPayment = async (payload) => {
+  const { data, error } = await supabase.from('invoice_payments').insert(payload).select('id').single()
+  if (error) throw error
+  if (data?.id && payload.invoice_id) {
+    apiPost('/email/notifications/payment', { invoice_id: payload.invoice_id, payment_id: data.id }).catch((e) => console.warn('[EmailTrigger] payment-confirmation:', e.message))
+  }
+  return data
+}
 export const removePayment = (id) => supabase.from('invoice_payments').delete().eq('id', id).then(({ error }) => { if (error) throw error })
 export const cancelInvoice = (id, reason) => supabase.from('invoices').update({ status: 'cancelled', cancelled_reason: reason }).eq('id', id).then(({ error }) => { if (error) throw error })
 export const deleteInvoice = (id) => supabase.from('invoices').delete().eq('id', id).then(({ error }) => { if (error) throw error })

@@ -15,6 +15,11 @@ GOOGLE_CLIENT_ID = "72870167062-3m7a9d40vu4chnmoq0ja8lp4d21jjb0c.apps.googleuser
 GOOGLE_REDIRECT_URI = "https://awenue-files-api.awenueglobalsoftwaresolutions.workers.dev/gmail/callback"
 APP_URL = "https://awenuesalesos.vercel.app"
 AWENUE_WEBSITE_API_URL = "https://www.awenueglobalsoftwaresolutions.in"
+RESEND_SUPPORT_FROM = "AWENUE Support Team <support@awenueglobalsoftwaresolutions.in>"
+RESEND_BILLING_FROM = "AWENUE Billing Department <billing@awenueglobalsoftwaresolutions.in>"
+RESEND_SUPPORT_REPLY_TO = "support@awenueglobalsoftwaresolutions.in"
+RESEND_BILLING_REPLY_TO = "billing@awenueglobalsoftwaresolutions.in"
+APP_BASE_URL = "https://www.awenueglobalsoftwaresolutions.in"
 
 # Secrets (never put these in this file):
 #   npx wrangler secret put GOOGLE_CLIENT_SECRET
@@ -22,3 +27,5 @@ AWENUE_WEBSITE_API_URL = "https://www.awenueglobalsoftwaresolutions.in"
 #   npx wrangler secret put FILE_SIGNING_SECRET
 #   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY   (Supabase > Project Settings > API > service_role; server-side only)
 #   npx wrangler secret put AWENUE_WEBSITE_API_KEY      (Main Website ADMIN_API_KEY; server-side only)
+#   npx wrangler secret put RESEND_API_KEY
+#   npx wrangler secret put RESEND_WEBHOOK_SECRET

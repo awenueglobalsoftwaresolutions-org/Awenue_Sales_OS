@@ -5,6 +5,8 @@ import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { addPayment, cancelInvoice, deleteInvoice, duplicateInvoice, getInvoice, recordSend, removePayment } from '../../services/invoices'
+import { apiPost } from '../../services/api'
+import { blobToBase64 } from '../../services/email'
 import { effectiveStatus } from '../../lib/invoiceCalc'
 import { friendlyError } from '../../lib/errors'
 import { downloadInvoicePdf, invoicePdfBlob } from '../../lib/invoicePdf'
@@ -86,7 +88,27 @@ export default function InvoiceDetail() {
   const closePreview = () => { if (preview) URL.revokeObjectURL(preview); setPreview(null) }
   const toFiles = async () => { setFiling(true); try { await saveInvoicePdfToFiles(d, d.items, profile); toast.success('Saved to the organization\'s Files (Invoices folder)') } catch (e) { toast.error(friendlyError(e)) } finally { setFiling(false) } }
   const dup = async () => { try { const newId = await duplicateInvoice(id); toast.success('Invoice duplicated'); navigate(`/invoices/${newId}`) } catch (e) { toast.error(friendlyError(e)) } }
-  const send = async (channel) => { try { await recordSend(id, channel, d.bill_to_email || null); toast.success('Send recorded'); refresh() } catch (e) { toast.error(friendlyError(e)) } }
+  const send = async (channel) => {
+    try {
+      if (channel === 'email' && d.bill_to_email) {
+        let pdfBase64 = null
+        try {
+          const blob = await invoicePdfBlob(d, d.items || [])
+          pdfBase64 = await blobToBase64(blob)
+        } catch (err) {
+          console.warn('PDF generation note:', err)
+        }
+        await apiPost('/email/notifications/invoice', { invoice_id: id, pdf_base64: pdfBase64 }).catch((err) => {
+          console.warn('Resend invoice dispatch note:', err.message)
+        })
+      }
+      await recordSend(id, channel, d.bill_to_email || null)
+      toast.success(channel === 'email' ? 'Invoice emailed via Resend & recorded' : 'Send recorded')
+      refresh()
+    } catch (e) {
+      toast.error(friendlyError(e))
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">

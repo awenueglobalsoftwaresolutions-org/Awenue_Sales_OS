@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { clean, mustAffect, pageRange, searchFilter } from '../lib/query'
+import { apiPost } from './api'
 
 const run = async (q) => { const { data, error } = await q; if (error) throw error; return data }
 const PROJECT_SELECT = '*, organization:organizations(id,name), assignee:profiles!projects_assigned_to_fkey(id,full_name)'
@@ -101,17 +102,31 @@ export const listTicketsForOrg = (orgId) => run(supabase.from('support_tickets')
 export const getTicket = (id) => run(supabase.from('support_tickets').select(TICKET_SELECT).eq('id', id).maybeSingle())
 export const listTicketEvents = (ticketId) => run(supabase.from('ticket_events').select('*, actor:profiles(full_name)').eq('ticket_id', ticketId).order('created_at'))
 export async function createTicket(values, { workspaceId, userId }) {
-  const { error } = await supabase.from('support_tickets').insert({ ...clean(values), workspace_id: workspaceId, created_by: userId })
+  const { data, error } = await supabase.from('support_tickets').insert({ ...clean(values), workspace_id: workspaceId, created_by: userId }).select('id').single()
   if (error) throw error
+  if (data?.id) {
+    apiPost('/email/notifications/ticket-created', { ticket_id: data.id }).catch((e) => console.warn('[EmailTrigger] ticket-created:', e.message))
+  }
+  return data
 }
-export const updateTicket = (id, patch) => mustAffect(supabase.from('support_tickets').update(clean(patch)).eq('id', id))
+export const updateTicket = async (id, patch) => {
+  const res = await mustAffect(supabase.from('support_tickets').update(clean(patch)).eq('id', id))
+  if (patch.status || patch.resolution) {
+    apiPost('/email/notifications/ticket-status', { ticket_id: id, new_status: patch.status, note: patch.resolution }).catch((e) => console.warn('[EmailTrigger] ticket-status:', e.message))
+  }
+  return res
+}
 export const deleteTicket = (id) => mustAffect(supabase.from('support_tickets').delete().eq('id', id))
 
 // ---- ticket remarks (append-only) and deal conversion
 export const listTicketComments = (ticketId) => run(supabase.from('ticket_comments').select('id,body,created_at,author:profiles(full_name)').eq('ticket_id', ticketId).order('created_at'))
 export async function addTicketComment({ ticketId, workspaceId, userId, body }) {
-  const { error } = await supabase.from('ticket_comments').insert({ ticket_id: ticketId, workspace_id: workspaceId, author_id: userId, body: body.trim() })
+  const { data, error } = await supabase.from('ticket_comments').insert({ ticket_id: ticketId, workspace_id: workspaceId, author_id: userId, body: body.trim() }).select('id').single()
   if (error) throw error
+  if (data?.id && ticketId) {
+    apiPost('/email/notifications/ticket-reply', { ticket_id: ticketId, comment_id: data.id, body }).catch((e) => console.warn('[EmailTrigger] ticket-reply:', e.message))
+  }
+  return data
 }
 export async function convertDealToProject(dealId, values = {}) {
   const { data, error } = await supabase.rpc('convert_deal_to_project', { p_deal: dealId, p: clean(values) })

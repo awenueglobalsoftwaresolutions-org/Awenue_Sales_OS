@@ -6,6 +6,7 @@ import * as auth from './routes/auth.js'
 import * as gmail from './routes/gmail.js'
 import * as email from './routes/email.js'
 import * as website from './routes/website.js'
+import * as resendEmail from './routes/resendEmail.js'
 
 export default {
   async fetch(request, env) {
@@ -38,6 +39,15 @@ export default {
         case 'POST /gmail/connect': return json(await gmail.connect(request, env), 200, cors)
         case 'POST /gmail/disconnect': return json(await gmail.disconnect(request, env), 200, cors)
         case 'POST /email/send': return json(await email.send(request, env), 200, cors)
+        case 'POST /email/notifications/ticket-created': return json(await resendEmail.ticketCreated(request, env), 200, cors)
+        case 'POST /email/notifications/ticket-reply': return json(await resendEmail.ticketReply(request, env), 200, cors)
+        case 'POST /email/notifications/ticket-status': return json(await resendEmail.ticketStatus(request, env), 200, cors)
+        case 'POST /email/notifications/invoice': return json(await resendEmail.sendInvoice(request, env), 200, cors)
+        case 'POST /email/notifications/payment': return json(await resendEmail.paymentConfirmation(request, env), 200, cors)
+        case 'POST /email/notifications/retry': return json(await resendEmail.retryNotification(request, env), 200, cors)
+        case 'GET /email/notifications/stats': return json(await resendEmail.getStats(request, env), 200, cors)
+        case 'GET /email/notifications/logs': return json(await resendEmail.listLogs(request, url, env), 200, cors)
+        case 'POST /webhooks/resend': case 'POST /api/webhooks/resend': return json(await resendEmail.handleWebhook(request, env), 200, cors)
         default: throw new HttpError(404, 'Not found')
       }
     } catch (e) {

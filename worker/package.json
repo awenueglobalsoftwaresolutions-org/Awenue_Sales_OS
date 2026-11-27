@@ -1,1 +1,1 @@
-{ "name": "awenue-files-api", "private": true, "type": "module", "scripts": { "dev": "wrangler dev", "deploy": "wrangler deploy" }, "devDependencies": { "wrangler": "^3.90.0" } }
+{"name":"awenue-files-api","private":true,"type":"module","scripts":{"dev":"wrangler dev","deploy":"wrangler deploy"},"devDependencies":{"wrangler":"^3.90.0"},"dependencies":{"resend":"^6.41.0"}}
