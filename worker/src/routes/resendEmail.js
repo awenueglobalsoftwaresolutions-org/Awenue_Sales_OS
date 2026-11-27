@@ -233,7 +233,7 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
   mustUuid(invoiceId, 'invoice')
 
   const r = await ctx.sb(
-    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,total,balance,tax_total,currency,status,payment_instructions,bill_to_name,bill_to_email,workspace_id,updated_at,cancelled_reason,issuer`
+    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,subtotal,discount_total,tax_total,total,balance,amount_paid,currency,status,payment_instructions,terms,notes,bill_to_name,bill_to_email,bill_to_phone,bill_to_address,bill_to_tax_id,workspace_id,updated_at,cancelled_reason,issuer,items:invoice_items(*)`
   )
   const [inv] = r.ok ? await r.json() : []
   if (!inv) throw new HttpError(404, 'Invoice not found.')
@@ -246,6 +246,7 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
   const sr = await ctx.sb(`invoice_settings?workspace_id=eq.${inv.workspace_id}&select=*`)
   const [settings] = sr.ok ? await sr.json() : []
   const paymentInstructions = inv.payment_instructions || settings?.payment_instructions || null
+  const terms = inv.terms || settings?.terms || null
 
   const recipientEmail = (b.recipient_email || inv.bill_to_email || '').trim().toLowerCase()
   if (!recipientEmail || !EMAIL_RE.test(recipientEmail)) {
@@ -255,6 +256,16 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
   const appBaseUrl = (env.APP_BASE_URL || 'https://www.awenueglobalsoftwaresolutions.in').replace(/\/$/, '')
   const invoiceUrl = `${appBaseUrl}/invoices/${inv.id}`
 
+  const issuer = {
+    company_name: settings?.company_name || inv.issuer?.company_name || 'AWENUE Global Software Solutions',
+    address: settings?.address || inv.issuer?.address || 'AWENUE Global Software Solutions, Varanasi, Uttar Pradesh, India',
+    email: settings?.email || inv.issuer?.email || 'billing@awenueglobalsoftwaresolutions.in',
+    phone: settings?.phone || inv.issuer?.phone || '+91 93051 45450',
+    website: settings?.website || inv.issuer?.website || 'www.awenueglobalsoftwaresolutions.in',
+    tax_id: settings?.tax_id || inv.issuer?.tax_id || '',
+    logo_url: settings?.logo_url || inv.issuer?.logo_url || null,
+  }
+
   const rendered = renderInvoiceGeneratedEmail({
     clientName: inv.bill_to_name || 'Valued Client',
     invoiceNumber: inv.invoice_number,
@@ -263,9 +274,24 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
     amount: inv.total,
     currency: inv.currency || 'INR',
     taxTotal: inv.tax_total,
+    subtotal: inv.subtotal,
+    discountTotal: inv.discount_total,
+    amountPaid: inv.amount_paid,
+    balance: inv.balance,
     paymentStatus: inv.status,
     paymentInstructions,
+    terms,
+    notes: inv.notes,
     invoiceUrl,
+    issuer,
+    billTo: {
+      name: inv.bill_to_name,
+      address: inv.bill_to_address,
+      email: inv.bill_to_email,
+      phone: inv.bill_to_phone,
+      tax_id: inv.bill_to_tax_id,
+    },
+    items: inv.items || b.items || [],
   })
 
   const attachments = []

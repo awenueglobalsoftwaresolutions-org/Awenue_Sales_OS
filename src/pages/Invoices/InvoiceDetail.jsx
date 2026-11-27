@@ -143,6 +143,7 @@ export default function InvoiceDetail() {
       await sendInvoiceByEmail(id, {
         recipientEmail: to,
         pdfBase64,
+        items: d.items,
         force: true,
       })
 

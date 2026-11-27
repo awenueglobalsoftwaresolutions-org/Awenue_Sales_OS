@@ -138,7 +138,7 @@ export default function InvoiceForm({ initial, prefill, onClose, onSaved }) {
           }
           const blob = await invoicePdfBlob(invoiceData, lines())
           const pdfBase64 = await blobToBase64(blob)
-          await sendInvoiceByEmail(id, { recipientEmail: inv.bill_to_email, pdfBase64, force: true })
+          await sendInvoiceByEmail(id, { recipientEmail: inv.bill_to_email, pdfBase64, items: lines(), force: true })
           toast.success(`Invoice created and emailed to ${inv.bill_to_email}!`)
         } catch (emailErr) {
           console.warn('[AutoEmail] Failed to send email on creation:', emailErr.message)
