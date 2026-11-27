@@ -124,12 +124,14 @@ function GoogleIcon({ className = 'w-5 h-5' }) {
 }
 
 export default function Login() {
-  const { session, loading, signIn, signInWithGoogle } = useAuth()
+  const { session, loading, signIn, signInWithGoogle, authError, setAuthError } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState('')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+
+  const activeError = authError || formError
 
   const {
     register,
@@ -146,6 +148,7 @@ export default function Login() {
 
   const onSubmit = async ({ email, password }) => {
     setFormError('')
+    if (setAuthError) setAuthError('')
     try {
       const { error } = await signIn(email, password)
       if (error) {
@@ -164,6 +167,7 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     setFormError('')
+    if (setAuthError) setAuthError('')
     setIsGoogleLoading(true)
     try {
       const redirectTo = location.state?.from
@@ -220,13 +224,13 @@ export default function Login() {
         )}
 
         {/* Form Error Alert */}
-        {formError && (
+        {activeError && (
           <div
             role="alert"
             className="mb-5 rounded-xl bg-red-50 p-3.5 text-xs text-red-700 border border-red-200 flex items-start gap-2"
           >
             <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
-            <span>{formError}</span>
+            <span>{activeError}</span>
           </div>
         )}
 

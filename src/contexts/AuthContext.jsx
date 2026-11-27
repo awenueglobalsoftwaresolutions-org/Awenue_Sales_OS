@@ -11,11 +11,27 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [permissions, setPermissions] = useState(() => new Set())
   const [profileReady, setProfileReady] = useState(false)
+  const [authError, setAuthError] = useState('')
   const lastUser = useRef(null)
 
   const loadProfile = useCallback(async (userId) => {
     const { data, error } = await supabase.from('profiles').select('*, workspace:workspaces(id,name)').eq('id', userId).maybeSingle()
     if (error) console.error('Failed to load profile', error)
+
+    // Strict Database Whitelist Check:
+    // Only users who exist in the database and have is_active === true are permitted.
+    if (!data || data.is_active === false) {
+      console.warn('Unauthorized login attempt: account is not active or not in database.')
+      await supabase.auth.signOut()
+      setSession(null)
+      setProfile(null)
+      setPermissions(new Set())
+      setProfileReady(true)
+      setAuthError('Access restricted: This account is not authorized in Awenue Sales OS. Please contact an administrator.')
+      return
+    }
+
+    setAuthError('')
     setProfile(data ?? null)
     if (data) {
       const { data: perms, error: permError } = await supabase.rpc('my_permissions')
@@ -52,6 +68,8 @@ export function AuthProvider({ children }) {
     role: profile?.role ?? null,
     loading,
     profileReady,
+    authError,
+    setAuthError,
     permissions,
     // 'leads.view' is granted by that exact permission, or by 'leads.manage' (everything in the module). The database enforces the same rule.
     can: (key) => permissions.has(key) || permissions.has(`${key.split('.')[0]}.manage`),

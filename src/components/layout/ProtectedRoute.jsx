@@ -7,7 +7,7 @@ export default function ProtectedRoute() {
   const location = useLocation()
   if (loading || (session && !profileReady)) return <Spinner label="Checking your session" className="h-screen" />
   if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  if (!profile) {
+  if (!profile || profile.is_active === false) {
     return (
       <div className="grid h-screen place-items-center bg-ink-50 px-4">
         <div className="max-w-sm rounded-2xl border border-ink-100 bg-white p-6 text-center shadow-card">
