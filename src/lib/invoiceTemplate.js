@@ -52,10 +52,46 @@ export function renderInvoice(doc, invoice, items, assets = {}) {
     rule(60.6, 536.1, FOOT_TOP); rule(60.8, 536.3, FOOT_BOTTOM)
     const site = (issuer.website || '').replace(/^https?:\/\//i, '').replace(/\/$/, '')
     const parts = [issuer.phone, issuer.email, site].filter(Boolean)
-    const o = { font: 'PublicSans', size: 11, track: 0.083 }, y = 777.1
-    if (parts.length === 3) { text(parts[0], 63.9, y, o); text(parts[1], COL_RIGHT, y, { ...o, align: 'center' }); text(parts[2], 536.5, y, { ...o, align: 'right' }) }
-    else if (parts.length === 2) { text(parts[0], 63.9, y, o); text(parts[1], 536.5, y, { ...o, align: 'right' }) }
-    else if (parts.length === 1) text(parts[0], 63.9, y, o)
+    if (!parts.length) return
+
+    // Dynamically calculate font size and spacing so parts never collide or overlap
+    let size = 11, track = 0.083
+    const testWidths = (s, tr) => {
+      doc.setFont('PublicSans', 'normal'); doc.setFontSize(s)
+      return parts.map((p) => doc.getTextWidth(p) + tr * s * Math.max(0, p.length - 1))
+    }
+
+    let widths = testWidths(size, track)
+    let totalW = widths.reduce((a, b) => a + b, 0)
+    const availW = 536.5 - 63.9
+    const minGap = (parts.length - 1) * 16
+
+    if (totalW + minGap > availW) { size = 9.5; track = 0.04; widths = testWidths(size, track); totalW = widths.reduce((a, b) => a + b, 0); }
+    if (totalW + minGap > availW) { size = 8.5; track = 0.02; widths = testWidths(size, track); totalW = widths.reduce((a, b) => a + b, 0); }
+    if (totalW + minGap > availW) { size = 7.5; track = 0.01; widths = testWidths(size, track); totalW = widths.reduce((a, b) => a + b, 0); }
+
+    const o = { font: 'PublicSans', size, track }
+    const y = 777.1
+
+    if (parts.length === 3) {
+      if (totalW + minGap <= availW) {
+        text(parts[0], 63.9, y, o)
+        const midX = (63.9 + widths[0] + 536.5 - widths[2]) / 2
+        text(parts[1], midX, y, { ...o, align: 'center' })
+        text(parts[2], 536.5, y, { ...o, align: 'right' })
+      } else {
+        const y1 = 769.5, y2 = 784.5
+        const o2 = { font: 'PublicSans', size: 8, track: 0.02 }
+        text(parts[0], 63.9, y1, o2)
+        text(parts[2], 536.5, y1, { ...o2, align: 'right' })
+        text(parts[1], (63.9 + 536.5) / 2, y2, { ...o2, align: 'center' })
+      }
+    } else if (parts.length === 2) {
+      text(parts[0], 63.9, y, o)
+      text(parts[1], 536.5, y, { ...o, align: 'right' })
+    } else if (parts.length === 1) {
+      text(parts[0], 63.9, y, o)
+    }
   }
 
   // later pages: footer plus the invoice number, so a loose sheet can still be identified

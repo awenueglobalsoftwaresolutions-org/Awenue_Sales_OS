@@ -256,7 +256,7 @@ export default function InvoiceDetail() {
                 {(d.items || []).map((it) => <tr key={it.id}><td className="py-2">{it.description}</td><td className="py-2 text-right">{it.quantity}</td><td className="py-2 text-right">{fmtMoney(it.unit_price, d.currency)}</td><td className="py-2 text-right font-medium">{fmtMoney(it.line_total, d.currency)}</td></tr>)}
               </tbody>
             </table>
-            <div className="mt-4 flex justify-end"><div className="w-48 space-y-1 text-sm">
+            <div className="mt-4 flex justify-end"><div className="w-64 space-y-1.5 text-sm">
               <div className="flex justify-between"><span className="text-ink-500">Subtotal</span><span>{fmtMoney(d.subtotal, d.currency)}</span></div>
               {Number(d.discount_total) > 0 && <div className="flex justify-between"><span className="text-ink-500">Discount</span><span className="text-emerald-600">−{fmtMoney(d.discount_total, d.currency)}</span></div>}
               {Number(d.tax_total) > 0 && <div className="flex justify-between"><span className="text-ink-500">Tax</span><span>{fmtMoney(d.tax_total, d.currency)}</span></div>}
