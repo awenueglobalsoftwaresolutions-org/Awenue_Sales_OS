@@ -16,8 +16,8 @@ const SIGNATURE = /\{\{\s*sender\.signature\s*\}\}/i
 
 export const INVOICE_BILLING_TEMPLATE = {
   id: 'awenue-billing-notice',
-  name: 'AWENUE Official Billing Notice (Clean Letter with Logo)',
-  subject: 'Invoice {{invoice.number}} for {{deal.title}} from AWENUE Global Software Solutions',
+  name: 'AWENUE Official Billing Notice',
+  subject: 'Invoice {{invoice.number}} | AWENUE Global Software Solutions',
   body: `Dear {{contact.full_name}},
 
 Greetings from AWENUE Global Software Solutions!
@@ -47,32 +47,8 @@ Website: https://www.awenueglobalsoftwaresolutions.in/
 Please find your invoice attached to this email for your reference and records.`,
 }
 
-export const INVOICE_DETAILED_TEMPLATE = {
-  id: 'detailed-invoice-sheet',
-  name: 'Detailed Invoice Sheet (Full Table & Breakdown)',
-  subject: 'Invoice #{{invoice.number}} from AWENUE Global Software Solutions',
-  body: `Dear {{contact.full_name}},
-
-Please find attached your official invoice #{{invoice.number}} from AWENUE Global Software Solutions.
-
-Invoice Details:
-- Invoice Number: {{invoice.number}}
-- Deal / Service: {{deal.title}}
-- Total Amount: {{invoice.total}}
-- Due Date: {{invoice.due_date}}
-
-Please review the attached invoice PDF for full itemization and complete payment by the due date.
-
-For billing-related queries, please contact:
-billing@awenueglobalsoftwaresolutions.in
-
-Warm Regards,
-AWENUE Billing Department`,
-}
-
 export const INVOICE_TEMPLATES = [
   INVOICE_BILLING_TEMPLATE,
-  INVOICE_DETAILED_TEMPLATE,
 ]
 
 export function buildContext({ contact, lead, organization, deal, invoice, task, sender } = {}) {

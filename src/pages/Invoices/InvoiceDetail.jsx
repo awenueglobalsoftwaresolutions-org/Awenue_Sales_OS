@@ -22,7 +22,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { Field, FormError, FormFooter } from '../../components/forms/FormParts'
 import InvoiceForm from './InvoiceForm'
 import RecordEmails from '../../components/email/RecordEmails'
-import { INVOICE_TEMPLATES, INVOICE_BILLING_TEMPLATE, buildContext, renderEmail, invoiceEmailDefaults } from '../../lib/emailTemplate'
+import { INVOICE_BILLING_TEMPLATE, buildContext, renderEmail, invoiceEmailDefaults } from '../../lib/emailTemplate'
 
 const STATUS_TONE = { draft: 'gray', sent: 'blue', partially_paid: 'amber', paid: 'green', overdue: 'red', cancelled: 'gray' }
 const EMAIL_STATUS_TONE = {
@@ -90,7 +90,6 @@ export default function InvoiceDetail() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
   const [targetEmail, setTargetEmail] = useState('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState(INVOICE_BILLING_TEMPLATE.id)
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody, setEmailBody] = useState('')
   const [showBodyEditor, setShowBodyEditor] = useState(false)
@@ -123,21 +122,11 @@ export default function InvoiceDetail() {
 
   const openSendConfirm = () => {
     setTargetEmail(d.bill_to_email || d.contact?.email || d.organization?.email || '')
-    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === selectedTemplateId) || INVOICE_BILLING_TEMPLATE
     const ctx = buildContext({ invoice: d, organization: d.organization, contact: d.contact })
-    const rendered = renderEmail(tmpl.subject, tmpl.body, ctx)
+    const rendered = renderEmail(INVOICE_BILLING_TEMPLATE.subject, INVOICE_BILLING_TEMPLATE.body, ctx)
     setEmailSubject(rendered.subject)
     setEmailBody(rendered.body)
     setConfirmModalOpen(true)
-  }
-
-  const handleSelectTemplate = (tmplId) => {
-    setSelectedTemplateId(tmplId)
-    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === tmplId) || INVOICE_BILLING_TEMPLATE
-    const ctx = buildContext({ invoice: d, organization: d.organization, contact: d.contact })
-    const rendered = renderEmail(tmpl.subject, tmpl.body, ctx)
-    setEmailSubject(rendered.subject)
-    setEmailBody(rendered.body)
   }
 
   const executeSendInvoiceEmail = async () => {
@@ -163,7 +152,7 @@ export default function InvoiceDetail() {
         pdfBase64,
         items: d.items,
         force: true,
-        templateStyle: selectedTemplateId === 'detailed-invoice-sheet' ? 'invoice_document' : 'clean_letter',
+        templateStyle: 'clean_letter',
         customSubject: emailSubject,
         customBody: emailBody,
         dealTitle: d.deal?.title,
@@ -423,27 +412,19 @@ export default function InvoiceDetail() {
             Please select your email template and verify invoice details before dispatching to the client. The official generated PDF will be attached.
           </p>
 
-          {/* Template Selector */}
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900">
-              Select Email Template
-            </label>
-            <select
-              className="input !bg-white !border-emerald-300 font-medium text-ink-900"
-              value={selectedTemplateId}
-              onChange={(e) => handleSelectTemplate(e.target.value)}
-              disabled={sendingEmail}
-            >
-              {INVOICE_TEMPLATES.map((tmpl) => (
-                <option key={tmpl.id} value={tmpl.id}>
-                  {tmpl.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-emerald-800">
-              {selectedTemplateId === 'awenue-billing-notice'
-                ? '✓ Clean and clear letter with AWENUE official logo, concise summary, and PDF attached.'
-                : '✓ Full table itemization breakdown with bank payment details and PDF attached.'}
+          {/* Official Billing Template Notice */}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Billing Template</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Default / Recommended
+              </span>
+            </div>
+            <div className="text-sm font-semibold text-emerald-950">
+              AWENUE Official Billing Notice (Clean Letter with Logo)
+            </div>
+            <p className="text-xs text-emerald-700">
+              ✓ Clean & clear official letterhead with AWENUE logo, invoice summary, and PDF attached.
             </p>
           </div>
 
