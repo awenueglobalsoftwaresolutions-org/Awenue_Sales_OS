@@ -15,7 +15,7 @@
     "test:email": "node --test scripts/email-template.test.mjs scripts/resend-email.test.mjs"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
+    "@hookform/resolvers": "^7.0.9",
     "@supabase/supabase-js": "^2.45.0",
     "date-fns": "^3.6.0",
     "exceljs": "^4.4.0",
