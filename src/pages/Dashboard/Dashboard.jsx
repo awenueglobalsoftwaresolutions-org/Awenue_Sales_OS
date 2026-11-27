@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
+import { listActiveProjects, listOpenTickets } from '../../services/projects'
+import { LifeBuoy, FolderKanban } from 'lucide-react'
 import { getDashboardStats, getLeadSourceBreakdown, listRecentActivities, listRecentLeads, listUpcomingTasks } from '../../services/dashboard'
 import { WEBSITE_STATUS_TONE, formatWebsiteStatus } from '../../services/website'
 import { LEAD_STATUSES, PRIORITY_TONE, STAGE_STYLES, STATUS_TONE, labelOf } from '../../constants/options'
@@ -80,6 +82,8 @@ export default function Dashboard() {
   const activities = useFetch(listRecentActivities, [])
   const tasks = useFetch(listUpcomingTasks, [])
   const leads = useFetch(listRecentLeads, [])
+  const openTickets = useFetch(() => listOpenTickets(6), [])
+  const activeProjects = useFetch(() => listActiveProjects(6), [])
   const first = profile?.full_name?.split(' ')[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -236,6 +240,34 @@ export default function Dashboard() {
       </section>
 
       {/* 5. Today's Workspace (3 columns in one row) */}
+      {(can('tickets.view') || can('projects.view')) && (
+        <section className="space-y-3" aria-label="Delivery and support">
+          <SectionHeading title="Delivery & Support" subtitle="Open client issues and projects in progress" />
+          <div className="grid gap-4 lg:gap-5 lg:grid-cols-2">
+            {can('tickets.view') && (
+              <ListCard title="Open support tickets" icon={LifeBuoy} iconTone="amber" to="/tickets" state={openTickets} empty="No open support tickets.">
+                {(t) => (
+                  <li key={t.id} className="py-2.5">
+                    <Link to={`/tickets?q=${t.id}`} className="block min-w-0 hover:text-brand-700">
+                      <p className="truncate text-sm font-medium text-ink-900">TKT-{String(t.ticket_number).padStart(4, '0')} · {t.subject}</p>
+                      <p className="truncate text-xs text-ink-500">{t.organization?.name} · {t.assignee?.full_name || 'Unassigned'}</p>
+                    </Link>
+                  </li>)}
+              </ListCard>)}
+            {can('projects.view') && (
+              <ListCard title="Projects in progress" icon={FolderKanban} iconTone="brand" to="/projects" state={activeProjects} empty="No projects in progress.">
+                {(p) => (
+                  <li key={p.id} className="py-2.5">
+                    <Link to={`/projects/${p.id}`} className="block min-w-0 hover:text-brand-700">
+                      <p className="truncate text-sm font-medium text-ink-900">{p.name}</p>
+                      <p className="text-xs text-ink-500">{p.organization?.name} · {p.progress}% complete</p>
+                    </Link>
+                  </li>)}
+              </ListCard>)}
+          </div>
+        </section>
+      )}
+
       <section className="space-y-3" aria-label="Workspace activity">
         <SectionHeading title="Today's Workspace" subtitle="Recent leads, upcoming tasks, and live team activity" />
         <div className="grid gap-4 lg:gap-5 lg:grid-cols-3">

@@ -169,3 +169,22 @@ Migration: `supabase/migrations/0018_projects_and_tickets.sql` (run it after 001
 - [ ] Support tickets > Raise ticket: an issue against a project; it appears in the project's tickets tab
 - [ ] Ticket: set status, assign, resolve with a resolution, then close (needs the Approve permission)
 - [ ] A Sales Representative can't close tickets or delete projects
+
+## Notifications, remarks, deal → project
+Migration: `supabase/migrations/0019_notifications_remarks_conversion.sql` (run after 0018).
+
+- **Notifications** are created by the database when a ticket is assigned, a remark is posted, a ticket's status changes, or a project, reminder, task or deal is assigned to someone. People are never notified about their own actions. Each person can switch off any type (bell icon > settings).
+- **Live delivery:** new notifications appear in the bell instantly and as a toast while the CRM is open. Turn on browser alerts from the bell to also get a system notification. Realtime needs `supabase_realtime` enabled for the project (on by default in Supabase).
+- **Remarks** can be added to any ticket. They're append-only, notify the assignee and the creator, and appear in the ticket's timeline with the history.
+- **Stages** on a project are shown left to right, like the pipeline.
+- **Deal → project:** a deal with an organization gets a "Convert to project" button. The client, team and service carry over, and the standard stages are added. A deal converts only once, and the deal links to its project.
+- **Tickets** appear in each organization's overview and in a "Delivery & Support" section of the dashboard.
+
+### Checklist
+- [ ] Assign a ticket to someone else: they get a bell notification and a toast within seconds
+- [ ] Add a remark to a ticket: the assignee and the creator are notified, the author isn't
+- [ ] Turn "Ticket status changes" off in notification settings: those stop for you only
+- [ ] Notifications page: filter unread, open an item (it's marked read and takes you to the record)
+- [ ] Deal with an organization > Convert to project: the project has seven stages, shown left to right
+- [ ] Deal without an organization shows a clear message that it needs a client first
+- [ ] Organization overview shows its support tickets; the dashboard shows open tickets and projects in progress

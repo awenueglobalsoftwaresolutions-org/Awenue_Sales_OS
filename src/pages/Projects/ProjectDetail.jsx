@@ -31,30 +31,38 @@ function StagesTab({ projectId, workspaceId, canEdit, onChanged }) {
   const act = async (fn, msg) => { try { await fn(); toast.success(msg); stages.reload(); onChanged() } catch (e) { toast.error(friendlyError(e)) } }
   if (stages.loading && !stages.data) return <Spinner className="py-10" />
   if (stages.error) return <ErrorState message={stages.error} onRetry={stages.reload} />
+  const done = stages.data.filter((s) => s.status === 'done').length
+  const STATUS = { pending: ['Pending', 'bg-ink-100 text-ink-600', 'border-ink-200'], in_progress: ['In progress', 'bg-sky-50 text-sky-700', 'border-sky-300'], done: ['Done', 'bg-brand-50 text-brand-700', 'border-brand-500'] }
   return (
-    <div className="space-y-4">
-      <ol className="space-y-2">
-        {stages.data.map((s) => (
-          <li key={s.id} className="rounded-2xl border border-ink-100 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${s.status === 'done' ? 'bg-brand-600 text-white' : s.status === 'in_progress' ? 'bg-sky-100 text-sky-700' : 'bg-ink-100 text-ink-500'}`}>{s.status === 'done' ? <Check className="h-4 w-4" /> : s.position}</span>
-                <div><p className="font-medium text-ink-900">{s.name}</p><p className="text-xs text-ink-500">{s.completed_at ? `Completed ${fmtDateTime(s.completed_at)}` : s.started_at ? `Started ${fmtDateTime(s.started_at)}` : 'Not started'}</p></div>
+    <div className="space-y-3">
+      <p className="text-sm text-ink-500">{done} of {stages.data.length} stages done. Stages run left to right, in order.</p>
+      <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-3" role="list" aria-label="Project stages">
+        {stages.data.map((s) => {
+          const [label, chip, edge] = STATUS[s.status]
+          return (
+            <section key={s.id} role="listitem" className={`flex w-72 shrink-0 snap-start flex-col rounded-2xl border border-t-4 bg-white p-4 shadow-card ${edge}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0"><p className="font-mono text-[11px] text-ink-400">Stage {s.position}</p><p className="font-semibold leading-snug text-ink-900">{s.name}</p></div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${chip}`}>{label}</span>
               </div>
-              {canEdit && <select className="input !w-auto !py-1.5 text-xs" value={s.status} onChange={(e) => act(() => updateStage(s.id, { status: e.target.value }), 'Stage updated')} aria-label={`Status of ${s.name}`}>
+              <p className="mt-2 text-xs text-ink-500">{s.completed_at ? `Completed ${fmtDateTime(s.completed_at)}` : s.started_at ? `Started ${fmtDateTime(s.started_at)}` : 'Not started'}</p>
+              {canEdit && <select className="input !py-1.5 mt-3 text-xs" value={s.status} onChange={(e) => act(() => updateStage(s.id, { status: e.target.value }), 'Stage updated')} aria-label={`Status of ${s.name}`}>
                 <option value="pending">Pending</option><option value="in_progress">In progress</option><option value="done">Done</option></select>}
-            </div>
-            {s.work_summary && <p className="mt-3 whitespace-pre-wrap rounded-xl bg-ink-50 p-3 text-sm text-ink-700">{s.work_summary}</p>}
-            {canEdit && (open === s.id ? (
-              <div className="mt-3 space-y-2">
-                <textarea rows={3} className="input" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What was done in this stage" aria-label="Work completed" />
-                <div className="flex gap-2"><button className="btn-primary !py-1.5 text-xs" onClick={() => act(async () => { await updateStage(s.id, { work_summary: summary.trim() || null }); setOpen(null) }, 'Work recorded')}>Save</button><button className="btn-ghost !py-1.5 text-xs" onClick={() => setOpen(null)}>Cancel</button></div>
-              </div>) : <button className="mt-2 text-xs font-medium text-brand-600 hover:underline" onClick={() => { setOpen(s.id); setSummary(s.work_summary || '') }}>{s.work_summary ? 'Edit work recorded' : 'Record work completed'}</button>)}
-          </li>))}
-      </ol>
-      {canEdit && <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (name.trim()) act(async () => { await addStage(projectId, workspaceId, name, stages.data); setName('') }, 'Stage added') }}>
-        <input className="input" placeholder="Add a stage to this project" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} aria-label="New stage name" />
-        <button className="btn-outline shrink-0" disabled={!name.trim()}><Plus className="h-4 w-4" />Add stage</button></form>}
+              <div className="mt-3 min-h-[3.5rem] flex-1 whitespace-pre-wrap rounded-xl bg-ink-50 p-3 text-sm text-ink-700">{s.work_summary || <span className="text-ink-400">No work recorded yet.</span>}</div>
+              {canEdit && (open === s.id ? (
+                <div className="mt-3 space-y-2">
+                  <textarea rows={3} className="input text-sm" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What was done in this stage" aria-label="Work completed" />
+                  <div className="flex gap-2"><button className="btn-primary !py-1.5 text-xs" onClick={() => act(async () => { await updateStage(s.id, { work_summary: summary.trim() || null }); setOpen(null) }, 'Work recorded')}>Save</button><button className="btn-ghost !py-1.5 text-xs" onClick={() => setOpen(null)}>Cancel</button></div>
+                </div>) : <button className="mt-3 text-left text-xs font-semibold text-brand-600 hover:underline" onClick={() => { setOpen(s.id); setSummary(s.work_summary || '') }}>{s.work_summary ? 'Edit work recorded' : 'Record work completed'}</button>)}
+            </section>)
+        })}
+        {canEdit && (
+          <form className="flex w-64 shrink-0 snap-start flex-col justify-center gap-2 rounded-2xl border border-dashed border-ink-300 bg-white p-4" onSubmit={(e) => { e.preventDefault(); if (name.trim()) act(async () => { await addStage(projectId, workspaceId, name, stages.data); setName('') }, 'Stage added') }}>
+            <p className="text-sm font-semibold text-ink-700">Add a stage</p>
+            <input className="input text-sm" placeholder="e.g. Security review" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} aria-label="New stage name" />
+            <button className="btn-outline !py-1.5 text-xs" disabled={!name.trim()}><Plus className="h-4 w-4" />Add to the end</button>
+          </form>)}
+      </div>
     </div>)
 }
 

@@ -16,6 +16,8 @@ import Badge from '../../components/common/Badge'
 import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import ActivityTimeline from '../../components/common/ActivityTimeline'
+import ConvertDealModal from '../../components/projects/ConvertDealModal'
+import { getProjectForDeal } from '../../services/projects'
 import RecordTasks from '../../components/common/RecordTasks'
 import RecordInvoices from '../../components/invoices/RecordInvoices'
 import RecordEmails from '../../components/email/RecordEmails'
@@ -28,6 +30,8 @@ export default function DealDetail() {
   const navigate = useNavigate()
   const { can } = useAuth()
   const deal = useFetch(() => getDeal(id), [id])
+  const linkedProject = useFetch(() => getProjectForDeal(id), [id])
+  const [converting, setConverting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [losing, setLosing] = useState(false)
@@ -64,6 +68,8 @@ export default function DealDetail() {
           </p>
         </div>
         <div className="flex gap-2">
+          {linkedProject.data ? <Link to={`/projects/${linkedProject.data.id}`} className="btn-outline">Project PRJ-{String(linkedProject.data.project_number).padStart(4, '0')}</Link>
+            : can('projects.create') && d.organization_id && <button className="btn-outline" onClick={() => setConverting(true)}>Convert to project</button>}
           {can('deals.edit') && <button className="btn-outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
           {can('deals.delete') && <button className="btn-outline border-red-200 !text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
@@ -93,6 +99,7 @@ export default function DealDetail() {
       <RecordTasks column="deal_id" id={id} />
       <ActivityTimeline key={timelineKey} column="deal_id" id={id} title="Deal history" />
 
+      {converting && <ConvertDealModal deal={d} onClose={() => setConverting(false)} />}
       <Modal open={editing} title="Edit deal" onClose={() => setEditing(false)} size="lg"><DealForm initial={d} onSubmit={save} onCancel={() => setEditing(false)} /></Modal>
       <ConfirmDialog open={deleting} title="Delete deal?" message={`“${d.title}” and its tasks and history will be permanently deleted.`} onConfirm={remove} onClose={() => setDeleting(false)} />
       {losing && <LostReasonModal deal={d} onClose={() => setLosing(false)} onSubmit={async (reason) => { await moveDeal(d, 'lost', reason); toast.success('Moved to Lost'); setLosing(false); refresh() }} />}

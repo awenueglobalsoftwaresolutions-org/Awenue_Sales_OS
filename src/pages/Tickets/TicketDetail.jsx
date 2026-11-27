@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
 import { friendlyError } from '../../lib/errors'
 import { fmtDateTime } from '../../lib/format'
-import { getTicket, listTicketEvents, TICKET_CATEGORIES, TICKET_STATUSES, updateTicket, PRIORITY_OPTIONS } from '../../services/projects'
+import { addTicketComment, getTicket, listTicketComments, listTicketEvents, PRIORITY_OPTIONS, TICKET_CATEGORIES, TICKET_STATUSES, updateTicket } from '../../services/projects'
 import { listProfiles } from '../../services/lookups'
 import Modal from '../../components/common/Modal'
 import Badge from '../../components/common/Badge'
@@ -13,21 +13,34 @@ import ErrorState from '../../components/common/ErrorState'
 
 const label = (list, v) => list.find((x) => x.value === v)?.label || v
 
-// Full ticket: details, status and assignment controls, resolution, and its history.
+// A ticket in full: details, status and assignment, resolution, remarks, and history in one timeline.
 export default function TicketDetail({ ticketId, onClose, onChanged }) {
   const { profile, can } = useAuth()
   const ticket = useFetch(() => getTicket(ticketId), [ticketId])
   const events = useFetch(() => listTicketEvents(ticketId), [ticketId])
+  const comments = useFetch(() => listTicketComments(ticketId), [ticketId])
   const users = useFetch(listProfiles, [])
   const [resolution, setResolution] = useState('')
+  const [remark, setRemark] = useState('')
   const [busy, setBusy] = useState(false)
+  const refresh = () => { ticket.reload(); events.reload(); comments.reload(); onChanged?.() }
   const save = async (patch, msg) => {
     setBusy(true)
-    try { await updateTicket(ticketId, patch); toast.success(msg); ticket.reload(); events.reload(); onChanged?.() }
-    catch (e) { toast.error(friendlyError(e)) } finally { setBusy(false) }
+    try { await updateTicket(ticketId, patch); toast.success(msg); refresh() } catch (e) { toast.error(friendlyError(e)) } finally { setBusy(false) }
+  }
+  const postRemark = async (e) => {
+    e.preventDefault(); if (!remark.trim()) return
+    setBusy(true)
+    try { await addTicketComment({ ticketId, workspaceId: profile.workspace_id, userId: profile.id, body: remark }); setRemark(''); toast.success('Remark added'); comments.reload(); onChanged?.() }
+    catch (err) { toast.error(friendlyError(err)) } finally { setBusy(false) }
   }
   const t = ticket.data
   const closed = t?.status === 'closed'
+  const timeline = [
+    ...(comments.data || []).map((c) => ({ key: `c${c.id}`, at: c.created_at, who: c.author?.full_name, kind: 'remark', text: c.body })),
+    ...(events.data || []).map((e) => ({ key: `e${e.id}`, at: e.created_at, who: e.actor?.full_name, kind: e.event_type, text: e.description })),
+  ].sort((a, b) => new Date(a.at) - new Date(b.at))
+
   return (
     <Modal open title={t ? `TKT-${String(t.ticket_number).padStart(4, '0')}` : 'Ticket'} onClose={onClose} size="lg">
       {ticket.loading && !t ? <Spinner className="py-10" /> : ticket.error ? <ErrorState message={ticket.error} onRetry={ticket.reload} /> : !t ? null : (
@@ -56,14 +69,23 @@ export default function TicketDetail({ ticketId, onClose, onChanged }) {
               <button className="btn-primary" disabled={busy || !resolution.trim()} onClick={() => save({ status: 'resolved', resolution: resolution.trim() }, 'Ticket resolved')}>Mark as resolved</button>
             </div>)}
           {t.status === 'resolved' && can('tickets.approve') && <button className="btn-outline" disabled={busy} onClick={() => save({ status: 'closed' }, 'Ticket closed')}>Close ticket</button>}
-          {closed && <p className="text-sm text-ink-500">Closed {fmtDateTime(t.closed_at)}. History is kept for reference.</p>}
+          {closed && <p className="text-sm text-ink-500">Closed {fmtDateTime(t.closed_at)}. The history stays for reference.</p>}
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-ink-900">History</p>
-            <ol className="space-y-2 border-l-2 border-ink-100 pl-4">
-              {(events.data || []).map((e) => (
-                <li key={e.id} className="text-sm"><p className="text-ink-900">{e.description}</p><p className="text-xs text-ink-500">{e.actor?.full_name || 'System'} · {fmtDateTime(e.created_at)}</p></li>))}
+            <p className="mb-2 text-sm font-semibold text-ink-900">Remarks & history</p>
+            <ol className="space-y-3 border-l-2 border-ink-100 pl-4">
+              {timeline.map((x) => (
+                <li key={x.key} className="text-sm">
+                  <p className={x.kind === 'remark' ? 'rounded-xl bg-ink-50 p-3 text-ink-900 whitespace-pre-wrap' : 'text-ink-700'}>{x.text}</p>
+                  <p className="mt-0.5 text-xs text-ink-500">{x.who || 'System'} · {fmtDateTime(x.at)}{x.kind === 'remark' ? ' · remark' : ''}</p>
+                </li>))}
+              {!timeline.length && <li className="text-sm text-ink-500">No remarks yet.</li>}
             </ol>
+            {can('tickets.edit') || can('tickets.create') ? (
+              <form onSubmit={postRemark} className="mt-4 space-y-2">
+                <textarea rows={2} className="input" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Add a remark for the team or the client" aria-label="Add a remark" />
+                <div className="flex justify-end"><button className="btn-primary !py-2" disabled={busy || !remark.trim()}>Add remark</button></div>
+              </form>) : null}
           </div>
         </div>)}
     </Modal>)

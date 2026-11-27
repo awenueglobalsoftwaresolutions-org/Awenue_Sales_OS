@@ -106,3 +106,18 @@ export async function createTicket(values, { workspaceId, userId }) {
 }
 export const updateTicket = (id, patch) => mustAffect(supabase.from('support_tickets').update(clean(patch)).eq('id', id))
 export const deleteTicket = (id) => mustAffect(supabase.from('support_tickets').delete().eq('id', id))
+
+// ---- ticket remarks (append-only) and deal conversion
+export const listTicketComments = (ticketId) => run(supabase.from('ticket_comments').select('id,body,created_at,author:profiles(full_name)').eq('ticket_id', ticketId).order('created_at'))
+export async function addTicketComment({ ticketId, workspaceId, userId, body }) {
+  const { error } = await supabase.from('ticket_comments').insert({ ticket_id: ticketId, workspace_id: workspaceId, author_id: userId, body: body.trim() })
+  if (error) throw error
+}
+export async function convertDealToProject(dealId, values = {}) {
+  const { data, error } = await supabase.rpc('convert_deal_to_project', { p_deal: dealId, p: clean(values) })
+  if (error) throw error
+  return data
+}
+export const getProjectForDeal = (dealId) => run(supabase.from('projects').select('id,project_number,name,status').eq('deal_id', dealId).maybeSingle())
+export const listOpenTickets = (limit = 6) => run(supabase.rpc('open_tickets_feed').select('id,ticket_number,subject,status,priority,organization_id,project_id,assigned_to,created_at, organization:organizations(name), assignee:profiles!support_tickets_assigned_to_fkey(full_name)').limit(limit))
+export const listActiveProjects = (limit = 6) => run(supabase.from('projects').select('id,project_number,name,status,progress,expected_end_date,organization:organizations(name)').in('status', ['in_progress', 'under_review', 'pending_client_approval', 'on_hold']).order('expected_end_date', { nullsFirst: false }).limit(limit))

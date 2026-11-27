@@ -29,6 +29,7 @@ const InvoiceDetail = lazy(() => import('./pages/Invoices/InvoiceDetail'))
 const ProjectsPage = lazy(() => import('./pages/Projects/ProjectsPage'))
 const ProjectDetail = lazy(() => import('./pages/Projects/ProjectDetail'))
 const TicketsPage = lazy(() => import('./pages/Tickets/TicketsPage'))
+const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'))
 
 const guarded = (perm, el) => <Gate perm={perm}>{el}</Gate>
 
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="projects" element={guarded('projects.view', <ProjectsPage />)} />
             <Route path="projects/:id" element={guarded('projects.view', <ProjectDetail />)} />
             <Route path="tickets" element={guarded('tickets.view', <TicketsPage />)} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

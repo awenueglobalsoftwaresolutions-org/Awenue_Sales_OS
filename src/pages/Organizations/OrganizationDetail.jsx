@@ -22,6 +22,7 @@ import RecordTasks from '../../components/common/RecordTasks'
 import OrganizationForm from '../../components/forms/OrganizationForm'
 import OrgFiles from '../../components/files/OrgFiles'
 import OrgProjects from '../../components/projects/OrgProjects'
+import OrgTicketsCard from '../../components/projects/OrgTicketsCard'
 import RecordInvoices from '../../components/invoices/RecordInvoices'
 import RecordEmails from '../../components/email/RecordEmails'
 import { fromOrganization } from '../../lib/invoicePrefill'
@@ -91,6 +92,7 @@ export default function OrganizationDetail() {
         {o.description && <p className="mt-4 whitespace-pre-wrap border-t border-ink-100 pt-4 text-sm text-ink-700">{o.description}</p>}
       </section>
 
+      {can('tickets.view') && <OrgTicketsCard orgId={id} />}
       <div className="grid gap-5 lg:grid-cols-3">
         <RelatedSection title="Contacts" state={contacts} empty="No contacts yet.">
           {(c) => <li key={c.id} className="py-2"><Link className="text-sm font-medium text-brand-600 hover:underline" to={`/contacts/${c.id}`}>{fullName(c)}</Link><p className="text-xs text-ink-500">{c.designation || c.email || '—'}</p></li>}
