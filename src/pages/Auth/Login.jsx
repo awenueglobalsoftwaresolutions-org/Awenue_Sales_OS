@@ -12,98 +12,9 @@ const schema = z.object({
   password: z.string().min(1, 'Enter your password'),
 })
 
-/* Pure SVG Top-Left 3D Flowing Ribbon Wave matching reference design */
-function TopLeftWave({ className = 'pointer-events-none absolute top-0 left-0 w-64 sm:w-80 md:w-96 lg:w-[440px] xl:w-[480px] z-0 select-none' }) {
-  return (
-    <svg
-      viewBox="0 0 440 320"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Soft mint backdrop ambient glow */}
-        <linearGradient id="tl-ambient" x1="0%" y1="0%" x2="80%" y2="80%">
-          <stop offset="0%" stopColor="#00B84A" stopOpacity="0.25" />
-          <stop offset="50%" stopColor="#86EFAC" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#EAFBF1" stopOpacity="0.0" />
-        </linearGradient>
-
-        {/* Translucent mint flowing ribbon */}
-        <linearGradient id="tl-mint" x1="0%" y1="0%" x2="100%" y2="70%">
-          <stop offset="0%" stopColor="#86EFAC" stopOpacity="0.65" />
-          <stop offset="60%" stopColor="#34D399" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#EAFBF1" stopOpacity="0.05" />
-        </linearGradient>
-
-        {/* Primary vibrant 3D green ribbon */}
-        <linearGradient id="tl-primary" x1="0%" y1="100%" x2="90%" y2="0%">
-          <stop offset="0%" stopColor="#008B3A" />
-          <stop offset="40%" stopColor="#00B84A" />
-          <stop offset="80%" stopColor="#22C55E" />
-          <stop offset="100%" stopColor="#4ADE80" />
-        </linearGradient>
-
-        {/* Deep green under-fold with depth */}
-        <linearGradient id="tl-fold" x1="10%" y1="30%" x2="90%" y2="80%">
-          <stop offset="0%" stopColor="#00662A" />
-          <stop offset="60%" stopColor="#008B3A" />
-          <stop offset="100%" stopColor="#00B84A" />
-        </linearGradient>
-
-        {/* Glossy top highlight */}
-        <linearGradient id="tl-crest" x1="0%" y1="0%" x2="70%" y2="100%">
-          <stop offset="0%" stopColor="#00B84A" stopOpacity="0.95" />
-          <stop offset="60%" stopColor="#008B3A" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#005220" stopOpacity="0.7" />
-        </linearGradient>
-      </defs>
-
-      {/* Broad soft ambient glow behind waves */}
-      <path
-        d="M0 0 H340 C280 80 230 150 160 210 C90 270 40 295 0 320 Z"
-        fill="url(#tl-ambient)"
-      />
-
-      {/* Layer 1: Soft translucent mint ribbon swooping down */}
-      <path
-        d="M0 0 H260 C210 65 175 130 115 185 C65 230 0 250 0 250 Z"
-        fill="url(#tl-mint)"
-      />
-
-      {/* Layer 2: Deep green under-ribbon providing 3D depth */}
-      <path
-        d="M0 130 C45 125 105 95 180 35 C210 15 235 0 250 0 H215 C185 10 150 35 110 75 C60 120 0 155 0 155 Z"
-        fill="url(#tl-fold)"
-      />
-
-      {/* Layer 3: Vibrant main green ribbon (curving from left edge upward to top) */}
-      <path
-        d="M0 75 C40 85 95 70 155 30 C190 8 220 0 235 0 H185 C145 10 100 45 55 68 C25 78 0 82 0 82 Z"
-        fill="url(#tl-primary)"
-      />
-
-      {/* Layer 4: Upper crest wave fold anchoring the top-left corner */}
-      <path
-        d="M0 0 H155 C170 30 145 75 90 105 C40 125 0 105 0 105 Z"
-        fill="url(#tl-crest)"
-      />
-
-      {/* Subtle glossy inner highlight edge */}
-      <path
-        d="M0 75 C40 85 95 70 155 30 C190 8 220 0 235 0"
-        stroke="#86EFAC"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeOpacity="0.6"
-      />
-    </svg>
-  )
-}
-
-/* Pure SVG Bottom-Right 3D Flowing Ribbon Wave matching reference design */
-function BottomRightWave({ className = 'pointer-events-none absolute bottom-0 right-0 w-72 sm:w-88 md:w-[440px] lg:w-[520px] xl:w-[580px] z-0 select-none' }) {
+/* Pure SVG 3D Flowing Ribbon Wave (Top-Left is the exact bottom wave design rotated 180deg) */
+function WaveGraphic({ className = '', flipped = false }) {
+  const prefix = flipped ? 'tl' : 'br'
   return (
     <svg
       viewBox="0 0 520 260"
@@ -114,21 +25,21 @@ function BottomRightWave({ className = 'pointer-events-none absolute bottom-0 ri
     >
       <defs>
         {/* Soft mint backdrop ambient glow */}
-        <linearGradient id="br-ambient" x1="100%" y1="100%" x2="20%" y2="20%">
+        <linearGradient id={`${prefix}-ambient`} x1="100%" y1="100%" x2="20%" y2="20%">
           <stop offset="0%" stopColor="#00B84A" stopOpacity="0.25" />
           <stop offset="50%" stopColor="#86EFAC" stopOpacity="0.16" />
           <stop offset="100%" stopColor="#EAFBF1" stopOpacity="0.0" />
         </linearGradient>
 
         {/* Translucent mint flowing ribbon */}
-        <linearGradient id="br-mint" x1="100%" y1="100%" x2="10%" y2="20%">
+        <linearGradient id={`${prefix}-mint`} x1="100%" y1="100%" x2="10%" y2="20%">
           <stop offset="0%" stopColor="#86EFAC" stopOpacity="0.65" />
           <stop offset="55%" stopColor="#34D399" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#EAFBF1" stopOpacity="0.05" />
         </linearGradient>
 
         {/* Primary vibrant 3D green ribbon */}
-        <linearGradient id="br-primary" x1="100%" y1="100%" x2="10%" y2="10%">
+        <linearGradient id={`${prefix}-primary`} x1="100%" y1="100%" x2="10%" y2="20%">
           <stop offset="0%" stopColor="#008B3A" />
           <stop offset="35%" stopColor="#00B84A" />
           <stop offset="75%" stopColor="#22C55E" />
@@ -136,47 +47,57 @@ function BottomRightWave({ className = 'pointer-events-none absolute bottom-0 ri
         </linearGradient>
 
         {/* Foreground crest fold */}
-        <linearGradient id="br-crest" x1="100%" y1="80%" x2="20%" y2="0%">
+        <linearGradient id={`${prefix}-crest`} x1="100%" y1="80%" x2="20%" y2="0%">
           <stop offset="0%" stopColor="#00662A" />
           <stop offset="50%" stopColor="#008B3A" />
           <stop offset="100%" stopColor="#00B84A" />
         </linearGradient>
       </defs>
 
-      {/* Broad soft ambient glow behind waves */}
-      <path
-        d="M520 260 V40 C430 80 340 140 220 180 C120 215 40 235 0 260 Z"
-        fill="url(#br-ambient)"
-      />
+      <g transform={flipped ? 'rotate(180 260 130)' : undefined}>
+        {/* Broad soft ambient glow behind waves */}
+        <path
+          d="M520 260 V40 C430 80 340 140 220 180 C120 215 40 235 0 260 Z"
+          fill={`url(#${prefix}-ambient)`}
+        />
 
-      {/* Layer 1: Soft translucent mint wave swooping upward */}
-      <path
-        d="M520 260 V85 C440 115 360 165 250 195 C160 225 60 245 0 260 Z"
-        fill="url(#br-mint)"
-      />
+        {/* Layer 1: Soft translucent mint wave swooping upward */}
+        <path
+          d="M520 260 V85 C440 115 360 165 250 195 C160 225 60 245 0 260 Z"
+          fill={`url(#${prefix}-mint)`}
+        />
 
-      {/* Layer 2: Main vibrant 3D undulating green ribbon */}
-      <path
-        d="M520 260 V135 C450 145 390 190 280 195 C200 198 120 225 60 260 Z"
-        fill="url(#br-primary)"
-      />
+        {/* Layer 2: Main vibrant 3D undulating green ribbon */}
+        <path
+          d="M520 260 V135 C450 145 390 190 280 195 C200 198 120 225 60 260 Z"
+          fill={`url(#${prefix}-primary)`}
+        />
 
-      {/* Layer 3: Foreground deep green ribbon fold along bottom edge */}
-      <path
-        d="M520 260 V185 C460 190 400 225 310 225 C230 225 160 245 110 260 Z"
-        fill="url(#br-crest)"
-      />
+        {/* Layer 3: Foreground deep green ribbon fold along bottom edge */}
+        <path
+          d="M520 260 V185 C460 190 400 225 310 225 C230 225 160 245 110 260 Z"
+          fill={`url(#${prefix}-crest)`}
+        />
 
-      {/* Subtle glossy highlight along ribbon crest */}
-      <path
-        d="M520 135 C450 145 390 190 280 195 C200 198 120 225 60 260"
-        stroke="#86EFAC"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeOpacity="0.55"
-      />
+        {/* Subtle glossy highlight along ribbon crest */}
+        <path
+          d="M520 135 C450 145 390 190 280 195 C200 198 120 225 60 260"
+          stroke="#86EFAC"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeOpacity="0.55"
+        />
+      </g>
     </svg>
   )
+}
+
+function TopLeftWave({ className = 'pointer-events-none absolute top-0 left-0 w-72 sm:w-88 md:w-[440px] lg:w-[520px] xl:w-[580px] z-0 select-none' }) {
+  return <WaveGraphic className={className} flipped={true} />
+}
+
+function BottomRightWave({ className = 'pointer-events-none absolute bottom-0 right-0 w-72 sm:w-88 md:w-[440px] lg:w-[520px] xl:w-[580px] z-0 select-none' }) {
+  return <WaveGraphic className={className} flipped={false} />
 }
 
 function GoogleIcon({ className = 'w-5 h-5' }) {
@@ -259,7 +180,7 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen w-full bg-[#fbfdfc] flex items-center justify-center px-4 py-8 sm:py-12 overflow-hidden select-text">
-      {/* Pure SVG Corner Waves */}
+      {/* Pure SVG Corner Waves (Top-Left is the rotated bottom wave) */}
       <TopLeftWave />
       <BottomRightWave />
 
