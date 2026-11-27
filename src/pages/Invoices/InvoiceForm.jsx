@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Eye, Plus, Trash2, X } from 'lucide-react'
+import { Eye, Mail, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../../hooks/useFetch'
 import { listContactOptions, listOrganizationOptions } from '../../services/lookups'
-import { getInvoiceSettings, listServicesWithPrices, saveInvoice } from '../../services/invoices'
+import { getInvoiceSettings, listServicesWithPrices, saveInvoice, sendInvoiceByEmail } from '../../services/invoices'
 import { calcInvoice, calcLine } from '../../lib/invoiceCalc'
 import { friendlyError } from '../../lib/errors'
 import { invoicePdfBlob } from '../../lib/invoicePdf'
+import { blobToBase64 } from '../../services/email'
 import { CURRENCIES } from '../../constants/options'
 import { fmtMoney } from '../../lib/format'
 import { Field } from '../../components/forms/FormParts'
@@ -107,15 +108,51 @@ export default function InvoiceForm({ initial, prefill, onClose, onSaved }) {
   }
   const lines = () => items.map((it) => ({ description: it.description.trim(), quantity: toNum(it.quantity), unit_price: toNum(it.unit_price), discount_type: it.discount_type, discount_value: toNum(it.discount_value), tax_rate: toNum(it.tax_rate) }))
 
-  const save = async () => {
+  const [autoEmail, setAutoEmail] = useState(true)
+
+  const save = async (shouldSendEmail = false) => {
     const e = validate(); setErrors(e)
     if (Object.keys(e).length) return
     setSaving(true)
     try {
       const payload = Object.fromEntries(FIELDS.map((k) => [k, inv[k]])); payload.id = initial?.id || undefined
       const id = await saveInvoice(payload, lines())
-      toast.success(initial?.id ? 'Invoice saved' : 'Draft invoice created'); onSaved(id)
-    } catch (err) { toast.error(friendlyError(err)) } finally { setSaving(false) }
+
+      if (shouldSendEmail && inv.bill_to_email) {
+        try {
+          const s = settings.data || {}
+          const invoiceData = {
+            ...payload,
+            id,
+            invoice_number: initial?.invoice_number || 'INV',
+            issuer: {
+              company_name: s.company_name,
+              address: s.address,
+              email: s.email,
+              phone: s.phone,
+              website: s.website,
+              tax_id: s.tax_id,
+              logo_url: s.logo_url,
+              signature_url: s.signature_url,
+            },
+          }
+          const blob = await invoicePdfBlob(invoiceData, lines())
+          const pdfBase64 = await blobToBase64(blob)
+          await sendInvoiceByEmail(id, { recipientEmail: inv.bill_to_email, pdfBase64, force: true })
+          toast.success(`Invoice created and emailed to ${inv.bill_to_email}!`)
+        } catch (emailErr) {
+          console.warn('[AutoEmail] Failed to send email on creation:', emailErr.message)
+          toast.warning(`Invoice saved, but email could not be sent: ${emailErr.message}`)
+        }
+      } else {
+        toast.success(initial?.id ? 'Invoice saved' : 'Draft invoice created')
+      }
+      onSaved(id)
+    } catch (err) {
+      toast.error(friendlyError(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const showPreview = async () => {
@@ -181,10 +218,36 @@ export default function InvoiceForm({ initial, prefill, onClose, onSaved }) {
         <Field label="Terms and conditions (one per line)"><textarea rows={3} className="input" value={inv.terms} onChange={setF('terms')} /></Field>
       </div>
 
-      <div className="flex flex-wrap justify-end gap-3 border-t border-ink-100 pt-4">
-        <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
-        <button type="button" className="btn-ghost border border-ink-300" onClick={showPreview} disabled={previewing}><Eye className="h-4 w-4" />{previewing ? 'Preparing…' : 'Preview PDF'}</button>
-        <button type="button" className="btn-primary" onClick={save} disabled={saving || items.length === 0}>{saving ? 'Saving…' : initial?.id ? 'Save changes' : 'Create draft'}</button>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-4">
+        <div>
+          {Boolean(inv.bill_to_email) && (
+            <label className="flex items-center gap-2 text-xs font-medium text-ink-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoEmail}
+                onChange={(e) => setAutoEmail(e.target.checked)}
+                className="rounded border-ink-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+              />
+              <span>Automatically email invoice with PDF to <strong className="text-emerald-700">{inv.bill_to_email}</strong></span>
+            </label>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" className="btn-ghost border border-ink-300" onClick={showPreview} disabled={previewing}><Eye className="h-4 w-4" />{previewing ? 'Preparing…' : 'Preview PDF'}</button>
+          <button type="button" className="btn-ghost border border-ink-300" onClick={() => save(false)} disabled={saving || items.length === 0}>
+            {saving ? 'Saving…' : initial?.id ? 'Save changes' : 'Save draft'}
+          </button>
+          <button
+            type="button"
+            className="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !text-white flex items-center gap-1.5"
+            onClick={() => save(autoEmail && Boolean(inv.bill_to_email))}
+            disabled={saving || items.length === 0}
+          >
+            {autoEmail && inv.bill_to_email && <Mail className="h-4 w-4" />}
+            {saving ? 'Saving…' : initial?.id ? (autoEmail && inv.bill_to_email ? 'Save & Email' : 'Save changes') : (autoEmail && inv.bill_to_email ? 'Create & Email Invoice' : 'Create Invoice')}
+          </button>
+        </div>
       </div>
 
       <Modal open={Boolean(preview)} title="Invoice preview" onClose={closePreview} size="lg">

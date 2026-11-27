@@ -76,6 +76,9 @@ export default function InvoiceDetail() {
   const [downloading, setDownloading] = useState(false)
   const [preview, setPreview] = useState(null)
   const [filing, setFiling] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false)
+  const [customEmail, setCustomEmail] = useState('')
 
   if (inv.loading && !inv.data) return <Spinner className="py-20" />
   if (inv.error) return <ErrorState message={inv.error} onRetry={inv.reload} />
@@ -88,27 +91,59 @@ export default function InvoiceDetail() {
   const closePreview = () => { if (preview) URL.revokeObjectURL(preview); setPreview(null) }
   const toFiles = async () => { setFiling(true); try { await saveInvoicePdfToFiles(d, d.items, profile); toast.success('Saved to the organization\'s Files (Invoices folder)') } catch (e) { toast.error(friendlyError(e)) } finally { setFiling(false) } }
   const dup = async () => { try { const newId = await duplicateInvoice(id); toast.success('Invoice duplicated'); navigate(`/invoices/${newId}`) } catch (e) { toast.error(friendlyError(e)) } }
+
+  const handleSendEmail = async (targetEmail) => {
+    const to = (targetEmail || d.bill_to_email || '').trim()
+    if (!to) {
+      setCustomEmail(d.contact?.email || d.organization?.email || '')
+      setEmailPromptOpen(true)
+      return
+    }
+
+    setSendingEmail(true)
+    const toastId = toast.loading(`Generating PDF & emailing invoice to ${to} via Billing Department...`)
+    try {
+      let pdfBase64 = null
+      try {
+        const blob = await invoicePdfBlob(d, d.items || [])
+        pdfBase64 = await blobToBase64(blob)
+      } catch (pdfErr) {
+        console.warn('Invoice PDF generation warning:', pdfErr.message)
+      }
+
+      await apiPost('/email/notifications/invoice', {
+        invoice_id: id,
+        recipient_email: to,
+        pdf_base64: pdfBase64,
+        resend: true,
+      })
+
+      await recordSend(id, 'email', to, 'Dispatched via Resend Billing Automation')
+      toast.success(`Invoice #${d.invoice_number} successfully sent to ${to}!`, { id: toastId })
+      setEmailPromptOpen(false)
+      refresh()
+    } catch (e) {
+      toast.error(friendlyError(e), { id: toastId })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   const send = async (channel) => {
     try {
-      if (channel === 'email' && d.bill_to_email) {
-        let pdfBase64 = null
-        try {
-          const blob = await invoicePdfBlob(d, d.items || [])
-          pdfBase64 = await blobToBase64(blob)
-        } catch (err) {
-          console.warn('PDF generation note:', err)
-        }
-        await apiPost('/email/notifications/invoice', { invoice_id: id, pdf_base64: pdfBase64 }).catch((err) => {
-          console.warn('Resend invoice dispatch note:', err.message)
-        })
+      if (channel === 'email') {
+        await handleSendEmail(d.bill_to_email)
+        return
       }
       await recordSend(id, channel, d.bill_to_email || null)
-      toast.success(channel === 'email' ? 'Invoice emailed via Resend & recorded' : 'Send recorded')
+      toast.success('Send recorded')
       refresh()
     } catch (e) {
       toast.error(friendlyError(e))
     }
   }
+
+  const hasBeenSentViaEmail = (d.sends || []).some((s) => s.channel === 'email')
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 animate-fade-up">
@@ -118,13 +153,24 @@ export default function InvoiceDetail() {
           <h1 className="text-2xl font-bold font-mono">{d.invoice_number}</h1>
           <div className="mt-1 flex flex-wrap gap-2"><Badge tone={STATUS_TONE[st]}>{st.replace('_', ' ')}</Badge><span className="text-sm text-ink-500">Due {fmtDay(d.due_date)}</span></div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {!isClosed && (can('invoices.approve') || can('invoices.edit')) && (
+            <button
+              className="btn-primary flex items-center gap-1.5 !bg-emerald-600 hover:!bg-emerald-700 !text-white shadow-sm"
+              onClick={() => handleSendEmail(d.bill_to_email)}
+              disabled={sendingEmail}
+              title="Send this invoice and attached PDF directly to client via billing@awenueglobalsoftwaresolutions.in"
+            >
+              <Mail className="h-4 w-4" />
+              {sendingEmail ? 'Sending email…' : hasBeenSentViaEmail ? 'Resend invoice by Email' : 'Send invoice by Email'}
+            </button>
+          )}
           <button className="btn-ghost border border-ink-300" onClick={openPreview}><Eye className="h-4 w-4" />Preview</button>
           {d.organization_id && filesConfigured && can('files.create') && <button className="btn-ghost border border-ink-300" onClick={toFiles} disabled={filing}><FolderInput className="h-4 w-4" />{filing ? 'Saving…' : 'Save to files'}</button>}
           <button className="btn-ghost border border-ink-300" onClick={dl} disabled={downloading}><Download className="h-4 w-4" />{downloading ? 'Generating…' : 'Download PDF'}</button>
           <button className="btn-ghost border border-ink-300" onClick={dup}><Copy className="h-4 w-4" />Duplicate</button>
           {!isClosed && can('invoices.edit') && <button className="btn-ghost border border-ink-300" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</button>}
-          {!isClosed && can('invoices.approve') && <button className="btn-primary" onClick={() => send('manual')}><Send className="h-4 w-4" />Mark as sent</button>}
+          {!isClosed && can('invoices.approve') && <button className="btn-ghost border border-ink-300" onClick={() => send('manual')}><Send className="h-4 w-4" />Mark as sent</button>}
           {!isClosed && can('invoices.approve') && d.status !== 'draft' && <button className="btn-ghost border border-ink-300" onClick={() => setCancelling(true)}><XCircle className="h-4 w-4" />Cancel</button>}
           {d.status === 'draft' && can('invoices.edit') && <button className="btn-ghost border border-red-200 !text-red-600" onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" />Delete</button>}
         </div>
@@ -194,6 +240,38 @@ export default function InvoiceDetail() {
       {cancelling && <CancelModal invoice={d} onClose={() => setCancelling(false)} onDone={() => { setCancelling(false); refresh() }} />}
       <ConfirmDialog open={deleting} title="Delete draft invoice?" message={`${d.invoice_number} will be permanently deleted.`} confirmLabel="Delete"
         onConfirm={async () => { await deleteInvoice(id); toast.success('Invoice deleted'); navigate('/invoices', { replace: true }) }} onClose={() => setDeleting(false)} />
+      
+      <Modal open={emailPromptOpen} title="Send Invoice by Email" onClose={() => !sendingEmail && setEmailPromptOpen(false)} size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-ink-600">
+            Enter the client email address below to dispatch invoice <strong>#{d.invoice_number}</strong> with the official PDF attached.
+          </p>
+          <Field label="Client Email Address" required>
+            <input
+              type="email"
+              placeholder="client@example.com"
+              className="input"
+              value={customEmail}
+              onChange={(e) => setCustomEmail(e.target.value)}
+              autoFocus
+            />
+          </Field>
+          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-800">
+            Official Sender: <strong>AWENUE Billing Department &lt;billing@awenueglobalsoftwaresolutions.in&gt;</strong>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-ink-100 pt-4 mt-4">
+          <button className="btn-ghost" onClick={() => setEmailPromptOpen(false)} disabled={sendingEmail}>Cancel</button>
+          <button
+            className="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !text-white flex items-center gap-1.5"
+            onClick={() => handleSendEmail(customEmail)}
+            disabled={sendingEmail || !customEmail.trim()}
+          >
+            <Mail className="h-4 w-4" />
+            {sendingEmail ? 'Sending…' : 'Send Invoice Email'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

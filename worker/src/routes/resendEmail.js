@@ -221,7 +221,11 @@ export async function ticketStatus(request, env) {
  */
 export async function sendInvoice(request, env) {
   const ctx = await authenticate(request, env)
-  await requirePermission(ctx, 'invoices.approve')
+  try {
+    await requirePermission(ctx, 'invoices.approve')
+  } catch {
+    await requirePermission(ctx, 'invoices.edit')
+  }
   const me = await myProfile(ctx)
   const b = await request.json().catch(() => ({}))
   const invoiceId = b.invoice_id
@@ -234,7 +238,7 @@ export async function sendInvoice(request, env) {
   const [inv] = r.ok ? await r.json() : []
   if (!inv) throw new HttpError(404, 'Invoice not found.')
 
-  const recipientEmail = (inv.bill_to_email || '').trim().toLowerCase()
+  const recipientEmail = (b.recipient_email || inv.bill_to_email || '').trim().toLowerCase()
   if (!recipientEmail || !EMAIL_RE.test(recipientEmail)) {
     throw new HttpError(400, 'This invoice does not have a valid recipient email (bill_to_email).')
   }
@@ -263,6 +267,9 @@ export async function sendInvoice(request, env) {
     })
   }
 
+  const isResend = Boolean(b.resend || b.force)
+  const idempotencyKey = isResend ? `invoice_gen_${inv.id}_${Date.now()}` : `invoice_gen_${inv.id}`
+
   return await sendBackendNotification(env, {
     workspaceId: inv.workspace_id,
     eventType: 'invoice_generated',
@@ -272,9 +279,9 @@ export async function sendInvoice(request, env) {
     html: rendered.html,
     text: rendered.text,
     attachments,
-    idempotencyKey: `invoice_gen_${inv.id}`,
+    idempotencyKey,
     relatedInvoiceId: inv.id,
-    metadata: { invoice_number: inv.invoice_number, total: inv.total, currency: inv.currency },
+    metadata: { invoice_number: inv.invoice_number, total: inv.total, currency: inv.currency, resend: isResend },
   })
 }
 

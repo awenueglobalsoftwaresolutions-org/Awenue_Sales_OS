@@ -35,6 +35,18 @@ export async function upsertInvoiceSettings(values, workspaceId) {
 export const saveInvoice = (invoice, items) => supabase.rpc('save_invoice', { p_invoice: invoice, p_items: items }).then(({ data, error }) => { if (error) throw error; return data })
 export const duplicateInvoice = (id) => supabase.rpc('duplicate_invoice', { p_id: id }).then(({ data, error }) => { if (error) throw error; return data })
 export const recordSend = (id, channel, recipient, note) => supabase.rpc('record_invoice_send', { p_id: id, p_channel: channel, p_recipient: recipient, p_note: note }).then(({ error }) => { if (error) throw error })
+export async function sendInvoiceByEmail(invoiceId, { recipientEmail = null, pdfBase64 = null, force = true } = {}) {
+  const res = await apiPost('/email/notifications/invoice', {
+    invoice_id: invoiceId,
+    recipient_email: recipientEmail,
+    pdf_base64: pdfBase64,
+    resend: force,
+  })
+  if (recipientEmail) {
+    await recordSend(invoiceId, 'email', recipientEmail, 'Emailed via Resend Billing Automation').catch(() => {})
+  }
+  return res
+}
 export const addPayment = async (payload) => {
   const { data, error } = await supabase.from('invoice_payments').insert(payload).select('id').single()
   if (error) throw error
