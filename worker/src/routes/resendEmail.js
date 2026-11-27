@@ -219,7 +219,7 @@ export async function ticketStatus(request, env) {
  * POST /email/notifications/invoice
  * Sends invoice generated email with PDF attachment.
  */
-export async function sendInvoice(request, env) {
+export async function sendInvoice(request, env, pathInvoiceId = null) {
   const ctx = await authenticate(request, env)
   try {
     await requirePermission(ctx, 'invoices.approve')
@@ -228,19 +228,23 @@ export async function sendInvoice(request, env) {
   }
   const me = await myProfile(ctx)
   const b = await request.json().catch(() => ({}))
-  const invoiceId = b.invoice_id
+  const invoiceId = pathInvoiceId || b.invoice_id
   if (!invoiceId) throw new HttpError(400, 'Invoice ID is required.')
   mustUuid(invoiceId, 'invoice')
 
   const r = await ctx.sb(
-    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,total,balance,tax_total,currency,status,payment_instructions,bill_to_name,bill_to_email,workspace_id`
+    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,total,balance,tax_total,currency,status,payment_instructions,bill_to_name,bill_to_email,workspace_id,updated_at,cancelled_reason`
   )
   const [inv] = r.ok ? await r.json() : []
   if (!inv) throw new HttpError(404, 'Invoice not found.')
 
+  if (inv.status === 'cancelled') {
+    throw new HttpError(400, 'Cannot send a cancelled invoice as an active invoice. Cancelled invoices are frozen.')
+  }
+
   const recipientEmail = (b.recipient_email || inv.bill_to_email || '').trim().toLowerCase()
   if (!recipientEmail || !EMAIL_RE.test(recipientEmail)) {
-    throw new HttpError(400, 'This invoice does not have a valid recipient email (bill_to_email).')
+    throw new HttpError(400, 'This invoice does not have a valid recipient email address.')
   }
 
   const appBaseUrl = (env.APP_BASE_URL || 'https://www.awenueglobalsoftwaresolutions.in').replace(/\/$/, '')
@@ -270,7 +274,7 @@ export async function sendInvoice(request, env) {
   const isResend = Boolean(b.resend || b.force)
   const idempotencyKey = isResend ? `invoice_gen_${inv.id}_${Date.now()}` : `invoice_gen_${inv.id}`
 
-  return await sendBackendNotification(env, {
+  const result = await sendBackendNotification(env, {
     workspaceId: inv.workspace_id,
     eventType: 'invoice_generated',
     recipientEmail,
@@ -283,6 +287,35 @@ export async function sendInvoice(request, env) {
     relatedInvoiceId: inv.id,
     metadata: { invoice_number: inv.invoice_number, total: inv.total, currency: inv.currency, resend: isResend },
   })
+
+  return {
+    ok: true,
+    invoice_id: inv.id,
+    invoice_number: inv.invoice_number,
+    recipient_email: recipientEmail,
+    resend_email_id: result.resendEmailId,
+    status: result.status || 'sent',
+    idempotentSkip: Boolean(result.idempotentSkip),
+    sent_at: new Date().toISOString(),
+  }
+}
+
+/**
+ * GET /api/invoices/:invoiceId/email-status
+ * Retrieves delivery status, resend id, timestamps and errors for an invoice.
+ */
+export async function getInvoiceEmailStatus(request, env, pathInvoiceId = null) {
+  const ctx = await authenticate(request, env)
+  await requirePermission(ctx, 'invoices.view')
+  const invoiceId = pathInvoiceId || new URL(request.url).searchParams.get('invoice_id')
+  if (!invoiceId) throw new HttpError(400, 'Invoice ID is required.')
+  mustUuid(invoiceId, 'invoice')
+
+  const res = await ctx.sb(
+    `email_notification_logs?related_invoice_id=eq.${invoiceId}&order=created_at.desc&limit=1&select=id,status,recipient_email,recipient_name,resend_email_id,sent_at,delivered_at,last_error,attempt_count,created_at,updated_at`
+  )
+  const [log] = res.ok ? await res.json() : []
+  return log || { status: 'not_sent', related_invoice_id: invoiceId }
 }
 
 /**

@@ -23,6 +23,14 @@ export default {
         const id = decodeURIComponent(url.pathname.slice('/website/contact-messages/'.length))
         return json(await website.updateContact(request, id, env), 200, cors)
       }
+      if (request.method === 'POST' && url.pathname.match(/^\/api\/invoices\/[^/]+\/send-email$/)) {
+        const id = url.pathname.split('/')[3]
+        return json(await resendEmail.sendInvoice(request, env, id), 200, cors)
+      }
+      if (request.method === 'GET' && url.pathname.match(/^\/api\/invoices\/[^/]+\/email-status$/)) {
+        const id = url.pathname.split('/')[3]
+        return json(await resendEmail.getInvoiceEmailStatus(request, env, id), 200, cors)
+      }
       switch (route) {
         case 'GET /file': return await files.serveFile(url, env)
         case 'GET /gmail/callback': return await gmail.callback(url, env)
@@ -42,7 +50,7 @@ export default {
         case 'POST /email/notifications/ticket-created': return json(await resendEmail.ticketCreated(request, env), 200, cors)
         case 'POST /email/notifications/ticket-reply': return json(await resendEmail.ticketReply(request, env), 200, cors)
         case 'POST /email/notifications/ticket-status': return json(await resendEmail.ticketStatus(request, env), 200, cors)
-        case 'POST /email/notifications/invoice': return json(await resendEmail.sendInvoice(request, env), 200, cors)
+        case 'POST /email/notifications/invoice': case 'POST /api/invoices/send-email': return json(await resendEmail.sendInvoice(request, env), 200, cors)
         case 'POST /email/notifications/payment': return json(await resendEmail.paymentConfirmation(request, env), 200, cors)
         case 'POST /email/notifications/retry': return json(await resendEmail.retryNotification(request, env), 200, cors)
         case 'GET /email/notifications/stats': return json(await resendEmail.getStats(request, env), 200, cors)

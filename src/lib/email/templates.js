@@ -722,12 +722,12 @@ export function renderInvoiceGeneratedEmail(data) {
     invoiceUrl,
   } = data
 
-  const subjectLine = `Invoice #${invoiceNumber} — AWENUE Global Software Solutions`
+  const subjectLine = data.subject || `Invoice #${invoiceNumber} from AWENUE Global Software Solutions`
   const previewText = `New invoice #${invoiceNumber} from AWENUE Global Software Solutions for ${currency} ${Number(amount).toLocaleString()}`
 
   const contentHtml = `
     <p>Dear ${escapeHtml(clientName)},</p>
-    <p>Thank you for partnering with AWENUE Global Software Solutions. Please find your official invoice <strong>#${escapeHtml(invoiceNumber)}</strong> detailed below.</p>
+    <p>Please find attached your invoice <strong>#${escapeHtml(invoiceNumber)}</strong> from AWENUE Global Software Solutions.</p>
 
     <!-- Prominent Financial Hero Card -->
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-top: 4px solid #059669; border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
@@ -742,9 +742,9 @@ export function renderInvoiceGeneratedEmail(data) {
 
     ${renderMetaTable([
       ['Invoice Number', `<strong>#${escapeHtml(invoiceNumber)}</strong>`],
-      ['Issue Date', escapeHtml(invoiceDate)],
+      ['Invoice Date', escapeHtml(invoiceDate)],
       ['Due Date', `<span style="font-weight: 700; color: #dc2626;">${escapeHtml(dueDate || 'Due upon receipt')}</span>`],
-      ['Invoice Amount', `<span style="font-size: 15px; font-weight: 700; color: #0f172a;">${escapeHtml(currency)} ${Number(amount).toLocaleString()}</span>`],
+      ['Total Amount', `<span style="font-size: 15px; font-weight: 700; color: #0f172a;">${escapeHtml(currency)} ${Number(amount).toLocaleString()}</span>`],
       ...(taxTotal ? [['Tax Breakdown', `${escapeHtml(currency)} ${Number(taxTotal).toLocaleString()}`]] : []),
       ['Payment Status', getStatusBadge(paymentStatus)],
     ])}
@@ -764,6 +764,10 @@ export function renderInvoiceGeneratedEmail(data) {
       </table>
     </div>
 
+    <p style="font-size: 14px; color: #334155;">
+      Please review the attached invoice and complete payment by the due date.
+    </p>
+
     ${paymentInstructions ? `
       <div style="margin: 20px 0; padding: 18px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #059669; border-radius: 4px 8px 8px 4px;">
         <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Remittance &amp; Payment Instructions</div>
@@ -772,7 +776,7 @@ export function renderInvoiceGeneratedEmail(data) {
     ` : ''}
 
     <p style="font-size: 14px; color: #64748b;">
-      For immediate online settlement via card, UPI, or net banking, please use the button below:
+      For billing-related queries, please contact <a href="mailto:${BRAND.billingEmail}" style="color: #059669; font-weight: 600;">${BRAND.billingEmail}</a>.
     </p>
   `
 
@@ -788,19 +792,22 @@ export function renderInvoiceGeneratedEmail(data) {
 
   const text = `Dear ${clientName},
 
-Please find attached your invoice #${invoiceNumber} issued by AWENUE Global Software Solutions.
+Please find attached your invoice #${invoiceNumber} from AWENUE Global Software Solutions.
 
-INVOICE DETAILS:
+Invoice Details:
 - Invoice Number: #${invoiceNumber}
-- Issue Date: ${invoiceDate}
+- Invoice Date: ${invoiceDate}
 - Due Date: ${dueDate || 'Due upon receipt'}
 - Total Amount: ${currency} ${Number(amount).toLocaleString()}
-${taxTotal ? `- Tax: ${currency} ${Number(taxTotal).toLocaleString()}\n` : ''}- Status: ${paymentStatus}
+${taxTotal ? `- Tax: ${currency} ${Number(taxTotal).toLocaleString()}\n` : ''}- Payment Status: ${paymentStatus}
 
-${paymentInstructions ? `PAYMENT INSTRUCTIONS:\n${paymentInstructions}\n\n` : ''}View or pay online:
+Please review the attached invoice and complete payment by the due date.
+
+${paymentInstructions ? `PAYMENT INSTRUCTIONS:\n${paymentInstructions}\n\n` : ''}View Invoice online:
 ${invoiceUrl || `${BRAND.website}/invoices/${invoiceNumber}`}
 
-PDF invoice is attached with this email.
+For billing-related queries, please contact:
+${BRAND.billingEmail}
 
 Regards,
 AWENUE Billing Department
