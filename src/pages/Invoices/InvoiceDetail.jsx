@@ -4,7 +4,7 @@ import { AlertCircle, CheckCircle, ChevronLeft, Clock, Copy, Download, Eye, Fold
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
-import { addPayment, cancelInvoice, deleteInvoice, duplicateInvoice, getInvoice, getInvoiceEmailDeliveryStatus, recordSend, removePayment } from '../../services/invoices'
+import { addPayment, cancelInvoice, deleteInvoice, duplicateInvoice, getInvoice, getInvoiceEmailDeliveryStatus, recordSend, removePayment, sendInvoiceByEmail } from '../../services/invoices'
 import { apiPost } from '../../services/api'
 import { blobToBase64 } from '../../services/email'
 import { effectiveStatus } from '../../lib/invoiceCalc'
@@ -140,19 +140,12 @@ export default function InvoiceDetail() {
         console.warn('[PDF] Generation warning:', pdfErr.message)
       }
 
-      await apiPost(`/api/invoices/${id}/send-email`, {
-        invoice_id: id,
-        recipient_email: to,
-        pdf_base64: pdfBase64,
-        resend: true,
-      }).catch(() => apiPost('/email/notifications/invoice', {
-        invoice_id: id,
-        recipient_email: to,
-        pdf_base64: pdfBase64,
-        resend: true,
-      }))
+      await sendInvoiceByEmail(id, {
+        recipientEmail: to,
+        pdfBase64,
+        force: true,
+      })
 
-      await recordSend(id, 'email', to, 'Dispatched via Resend Billing Automation')
       toast.success(`Invoice #${d.invoice_number} successfully emailed to ${to}!`, { id: toastId })
       setConfirmModalOpen(false)
       refresh()

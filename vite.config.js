@@ -3,6 +3,7 @@ import path from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { forwardWebsiteRequest, getWebsiteEnv, pickPatchBody, sanitizeId, verifySupabaseAuth } from './api/_lib/websiteProxy.js'
+import { handleSendInvoiceEmail } from './api/_lib/emailNotificationsHandler.js'
 
 function readRawEnvFile(cwd) {
   const out = {}
@@ -90,10 +91,30 @@ function websiteApiProxyPlugin(env) {
   }
 }
 
+function emailApiProxyPlugin(env) {
+  const handle = async (req, res, next) => {
+    const url = new URL(req.url, 'http://localhost')
+    if (req.method === 'POST' && url.pathname.match(/^\/api\/invoices\/[^/]+\/send-email$/)) {
+      const id = url.pathname.split('/')[3]
+      return handleSendInvoiceEmail(req, res, env, id)
+    }
+    if (req.method === 'POST' && (url.pathname === '/email/notifications/invoice' || url.pathname === '/api/invoices/send-email')) {
+      return handleSendInvoiceEmail(req, res, env, null)
+    }
+    next()
+  }
+
+  return {
+    name: 'email-api-proxy',
+    configureServer(server) { server.middlewares.use(handle) },
+    configurePreviewServer(server) { server.middlewares.use(handle) },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ''), ...readRawEnvFile(process.cwd()) }
   return {
-    plugins: [react(), websiteApiProxyPlugin(env)],
+    plugins: [react(), websiteApiProxyPlugin(env), emailApiProxyPlugin(env)],
     build: {
       // The biggest bundles (Excel export, PDF, charts) are loaded only when those screens open, so the first page stays small.
       chunkSizeWarningLimit: 1000,

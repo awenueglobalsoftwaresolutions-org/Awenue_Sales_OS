@@ -11,12 +11,47 @@ export async function accessToken() {
 }
 
 export async function apiPost(path, body) {
-  if (!apiConfigured) throw new Error('The server API isn’t connected. Set VITE_API_URL (see the README).')
-  const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed. Please try again.')
+  const token = await accessToken()
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  let res = null
+  let data = null
+
+  if (apiConfigured) {
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      data = await res.json().catch(() => ({}))
+    } catch {
+      // Remote worker network unreachable, proceed to fallback
+    }
+  }
+
+  // If remote worker returned 404 (route not yet deployed to Cloudflare) or was unreachable,
+  // gracefully fallback to same-origin / local Vite dev server / Vercel API
+  if (!res || res.status === 404) {
+    try {
+      const localRes = await fetch(path, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (localRes && localRes.ok) {
+        return await localRes.json().catch(() => ({}))
+      }
+      if (localRes && !localRes.ok && localRes.status !== 404) {
+        const localData = await localRes.json().catch(() => ({}))
+        throw new Error(localData.error || 'Request failed. Please try again.')
+      }
+    } catch (e) {
+      if (e.message && e.message !== 'Request failed. Please try again.') throw e
+    }
+  }
+
+  if (!res || !res.ok) throw new Error(data?.error || 'Request failed. Please try again.')
   return data
 }
 

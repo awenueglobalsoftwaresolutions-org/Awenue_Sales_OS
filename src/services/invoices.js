@@ -89,17 +89,37 @@ export const saveInvoice = (invoice, items) => supabase.rpc('save_invoice', { p_
 export const duplicateInvoice = (id) => supabase.rpc('duplicate_invoice', { p_id: id }).then(({ data, error }) => { if (error) throw error; return data })
 export const recordSend = (id, channel, recipient, note) => supabase.rpc('record_invoice_send', { p_id: id, p_channel: channel, p_recipient: recipient, p_note: note }).then(({ error }) => { if (error) throw error })
 export async function sendInvoiceByEmail(invoiceId, { recipientEmail = null, pdfBase64 = null, force = true } = {}) {
-  const res = await apiPost(`/api/invoices/${invoiceId}/send-email`, {
+  const payload = {
     invoice_id: invoiceId,
     recipient_email: recipientEmail,
     pdf_base64: pdfBase64,
     resend: force,
-  }).catch(() => apiPost('/email/notifications/invoice', {
-    invoice_id: invoiceId,
-    recipient_email: recipientEmail,
-    pdf_base64: pdfBase64,
-    resend: force,
-  }))
+  }
+
+  let res = null
+  try {
+    res = await apiPost(`/api/invoices/${invoiceId}/send-email`, payload)
+  } catch (err) {
+    if (err.message === 'Not found' || (err.message && err.message.includes('404'))) {
+      res = await apiPost('/email/notifications/invoice', payload).catch(async () => {
+        // Fallback directly to local dev server / Vercel serverless function
+        const { data: sessionData } = await supabase.auth.getSession().catch(() => ({}))
+        const token = sessionData?.session?.access_token
+        const headers = { 'Content-Type': 'application/json' }
+        if (token) headers.Authorization = `Bearer ${token}`
+        const r = await fetch(`/api/invoices/${invoiceId}/send-email`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        })
+        const d = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(d.error || 'Request failed. Please try again.')
+        return d
+      })
+    } else {
+      throw err
+    }
+  }
 
   if (recipientEmail) {
     await recordSend(invoiceId, 'email', recipientEmail, 'Emailed via Resend Billing Automation').catch(() => {})
