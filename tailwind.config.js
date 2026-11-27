@@ -32,6 +32,14 @@ export default {
           100: '#eceef3',
           50: '#f6f7fa',
         },
+        awenue: {
+          green: '#00B84A',
+          'green-deep': '#008B3A',
+          navy: '#071A35',
+          mint: '#EAFBF1',
+          gray: '#647084',
+          border: '#E4E9EF',
+        },
       },
       boxShadow: {
         card: '0 1px 2px rgba(20,22,31,.04), 0 2px 6px rgba(20,22,31,.03)',

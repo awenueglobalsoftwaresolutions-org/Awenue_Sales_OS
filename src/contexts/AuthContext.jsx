@@ -71,6 +71,12 @@ export function AuthProvider({ children }) {
         return supabase.auth.signInWithPassword({ email, password })
       }
     },
+    signInWithGoogle: async (redirectTo) => {
+      return supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirectTo || window.location.origin },
+      })
+    },
     signOut: async () => {
       await Promise.race([logEvent({ action: 'logout', module: 'auth', description: 'Signed out' }), new Promise((r) => setTimeout(r, 1500))])
       return supabase.auth.signOut()
