@@ -20,29 +20,24 @@ export const INVOICE_BILLING_TEMPLATE = {
   subject: 'Invoice {{invoice.number}} | AWENUE Global Software Solutions',
   body: `Dear {{contact.full_name}},
 
-Greetings from AWENUE Global Software Solutions!
-We hope you are doing well.
-
-Please find attached the invoice for {{deal.title}}, issued by AWENUE Global Software Solutions.
+Please find attached the invoice for {{deal.title}} issued by AWENUE Global Software Solutions.
 
 Invoice Details
 Invoice Number: {{invoice.number}}
 Total Amount: {{invoice.total}}
 Payment Due Date: {{invoice.due_date}}
 
-We kindly request you to review the attached invoice and arrange the payment on or before the specified due date.
+Kindly review the attached invoice and arrange payment by the due date.
 
-Should you have any questions, require clarification regarding the invoice, or need any assistance with the payment process, please feel free to contact our Billing Department at billing@awenueglobalsoftwaresolutions.in.
+For any invoice-related queries or payment assistance, please contact us at info@awenueglobalsoftwaresolutions.in.
 
-We sincerely appreciate your trust in AWENUE Global Software Solutions and value the opportunity to work with you. We look forward to building a long-term and successful business relationship.
+Thank you for your business and continued trust in AWENUE Global Software Solutions.
 
-Thank you for choosing AWENUE Global Software Solutions.
-
-Warm Regards,
+Best Regards,
 Billing Department
 AWENUE Global Software Solutions
-Email: billing@awenueglobalsoftwaresolutions.in
-Website: https://www.awenueglobalsoftwaresolutions.in/
+info@awenueglobalsoftwaresolutions.in
+https://www.awenueglobalsoftwaresolutions.in/
 
 Please find your invoice attached to this email for your reference and records.`,
 }

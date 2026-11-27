@@ -1,6 +1,6 @@
 // AWENUE Global Software Solutions — Transactional Email Templates
-// Dedicated professional email designs for Support Desk vs Billing & Accounts.
-// Mobile-responsive, cross-client compatible (Gmail, Outlook 365, Apple Mail), with full plain-text fallbacks.
+// Clean, maintainable, mobile-responsive, cross-client email templates (Gmail, Outlook, Apple Mail).
+// Complete separation between Support (Royal Blue) and Billing (Emerald Green) identities.
 
 export const BRAND = {
   name: 'AWENUE Global Software Solutions',
@@ -8,12 +8,22 @@ export const BRAND = {
   website: 'https://www.awenueglobalsoftwaresolutions.in',
   appUrl: 'https://awenuesalesos.vercel.app',
   logoUrl: 'https://awenuesalesos.vercel.app/brand/apple-touch-icon.png',
-  invoiceLogoUrl: 'https://awenuesalesos.vercel.app/brand/awenue-invoice-logo.jpg',
+  invoiceLogoUrl: 'https://awenuesalesos.vercel.app/brand/awenue-logo.png',
   supportEmail: 'support@awenueglobalsoftwaresolutions.in',
   billingEmail: 'billing@awenueglobalsoftwaresolutions.in',
   address: 'AWENUE Global Software Solutions, Varanasi, Uttar Pradesh, India',
-  supportColor: '#2563eb',    // Royal Blue for Support
-  billingColor: '#059669',    // Financial Emerald for Billing
+  supportColor: '#2563eb', // Professional Royal Blue
+  billingColor: '#059669', // Professional Emerald Green
+}
+
+const CURRENCY_SYMBOLS = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AED: 'AED ',
+  CAD: 'C$',
+  AUD: 'A$',
 }
 
 /**
@@ -30,17 +40,61 @@ export function escapeHtml(str) {
 }
 
 /**
+ * Validates and sanitizes URLs to prevent unsafe schemes (e.g. javascript:, data:).
+ */
+export function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return ''
+  const trimmed = url.trim()
+  if (/^(https?:\/\/|mailto:)/i.test(trimmed)) {
+    return trimmed
+  }
+  return '#'
+}
+
+/**
  * Formats multi-line text into safe paragraphs/linebreaks.
  */
-function formatTextBody(text) {
+export function formatTextBody(text) {
   if (!text) return ''
   return escapeHtml(text).replace(/\n/g, '<br/>')
 }
 
 /**
- * Status and Priority Badge Color Helpers
+ * Safe numeric currency formatter with support for INR, USD, EUR, GBP, etc.
  */
-function getStatusBadge(status) {
+export function formatCurrency(amount, currency = 'INR', spaced = true) {
+  const num = Number(amount) || 0
+  const sym = CURRENCY_SYMBOLS[currency] || `${currency} `
+  const isNeg = num < 0
+  const absNum = Math.abs(num)
+  const formatted = new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(absNum)
+
+  return `${isNeg ? '−' : ''}${sym}${spaced && !sym.endsWith(' ') ? ' ' : ''}${formatted}`
+}
+
+/**
+ * Formats ISO date string (YYYY-MM-DD) into ordinal representation (e.g. 28th Nov 2026).
+ */
+export function formatOrdinalDate(isoStr) {
+  if (!isoStr) return '—'
+  try {
+    const [y, m, d] = String(isoStr).slice(0, 10).split('-').map(Number)
+    if (!y || !m || !d) return String(isoStr)
+    const suffix = d % 100 >= 11 && d % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[d % 10] || 'th')
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${d}${suffix} ${months[m - 1]} ${y}`
+  } catch {
+    return String(isoStr)
+  }
+}
+
+/**
+ * Status and Priority Badge Helpers
+ */
+export function getStatusBadge(status) {
   const s = String(status || '').toLowerCase().replace(/_/g, ' ')
   if (s.includes('resolved') || s.includes('paid')) {
     return `<span style="display: inline-block; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">● ${escapeHtml(s)}</span>`
@@ -57,7 +111,7 @@ function getStatusBadge(status) {
   return `<span style="display: inline-block; background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(s)}</span>`
 }
 
-function getPriorityBadge(priority) {
+export function getPriorityBadge(priority) {
   const p = String(priority || '').toLowerCase()
   if (p === 'urgent' || p === 'high') {
     return `<span style="display: inline-block; background-color: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase;">${escapeHtml(p)}</span>`
@@ -71,7 +125,7 @@ function getPriorityBadge(priority) {
 /**
  * Standard details table row helper
  */
-function renderMetaTable(rows) {
+export function renderMetaTable(rows) {
   const content = rows
     .map(
       ([label, value], idx) => `
@@ -92,7 +146,8 @@ function renderMetaTable(rows) {
 // DEDICATED SUPPORT EMAIL SHELL (CLIENT SUPPORT DESK)
 // ============================================================================
 
-function renderSupportEmailShell({ previewText, headline, subheadline, contentHtml, ctaText, ctaUrl, ticketNumber }) {
+export function renderSupportEmailShell({ previewText, headline, subheadline, contentHtml, ctaText, ctaUrl, ticketNumber }) {
+  const safeCtaUrl = sanitizeUrl(ctaUrl)
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -116,7 +171,6 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
   </style>
 </head>
 <body style="margin: 0; padding: 24px 0; background-color: #f1f5f9;">
-  <!-- Hidden preview text for email client inbox list -->
   <div style="display: none; font-size: 1px; color: #f1f5f9; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
     ${escapeHtml(previewText)}
     &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
@@ -141,11 +195,10 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="vertical-align: middle; padding-right: 12px;">
-                          <!-- Official Brand Logo -->
                           <img src="${BRAND.logoUrl}" width="42" height="42" alt="AWENUE" style="display: block; width: 42px; height: 42px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);" />
                         </td>
                         <td style="vertical-align: middle;">
-                          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase;">
                             AWENUE
                           </div>
                           <div style="font-size: 10px; color: #94a3b8; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 2px;">
@@ -157,7 +210,7 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <span style="display: inline-block; background-color: rgba(37, 99, 235, 0.25); border: 1px solid rgba(96, 165, 250, 0.4); color: #bfdbfe; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.75px;">
-                      🎧 Support Desk
+                      Support Desk
                     </span>
                   </td>
                 </tr>
@@ -167,15 +220,15 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
 
           <!-- Support Sub-banner -->
           <tr>
-            <td style="background-color: #1e293b; padding: 8px 32px; font-size: 11px; color: #cbd5e1; letter-spacing: 0.5px; border-bottom: 1px solid #334155;">
+            <td style="background-color: #0f172a; padding: 8px 32px; font-size: 11px; color: #94a3b8; letter-spacing: 0.5px; border-bottom: 1px solid #1e293b;">
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <span>Support Ticket Tracking &amp; Resolution System</span>
+                    <span>Transactional Support Notification</span>
                   </td>
                   ${ticketNumber ? `
                     <td align="right" style="font-weight: 700; color: #60a5fa;">
-                      #${escapeHtml(ticketNumber)}
+                      Ticket #${escapeHtml(ticketNumber)}
                     </td>
                   ` : ''}
                 </tr>
@@ -199,16 +252,16 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
               ${contentHtml}
 
               <!-- Primary Support CTA Button -->
-              ${ctaText && ctaUrl ? `
+              ${ctaText && safeCtaUrl !== '#' ? `
                 <div style="margin: 32px 0 20px 0; text-align: center;">
-                  <a href="${escapeHtml(ctaUrl)}" class="btn-support" target="_blank" style="background-color: #2563eb; color: #ffffff; display: inline-block; padding: 14px 34px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);">
+                  <a href="${escapeHtml(safeCtaUrl)}" class="btn-support" target="_blank" style="background-color: #2563eb; color: #ffffff; display: inline-block; padding: 14px 34px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);">
                     ${escapeHtml(ctaText)} &rarr;
                   </a>
                 </div>
                 <div style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 8px;">
                   If the button does not open, visit:
                   <br />
-                  <a href="${escapeHtml(ctaUrl)}" style="color: #2563eb; word-break: break-all;">${escapeHtml(ctaUrl)}</a>
+                  <a href="${escapeHtml(safeCtaUrl)}" style="color: #2563eb; word-break: break-all;">${escapeHtml(safeCtaUrl)}</a>
                 </div>
               ` : ''}
             </td>
@@ -228,8 +281,7 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
                 <tr>
                   <td style="vertical-align: top; padding-bottom: 12px;">
                     <strong style="color: #0f172a; font-size: 13px;">AWENUE Client Support Team</strong><br />
-                    <span>24/7 Monitored Support &bull; Standard SLA: &lt; 2 hrs for high-priority items</span><br />
-                    <span>Help Center: <a href="${BRAND.website}" target="_blank" style="color: #2563eb; text-decoration: none;">www.awenueglobalsoftwaresolutions.in</a></span> &bull; 
+                    <span>24/7 Monitored Support &bull; Help Center: <a href="${BRAND.website}" target="_blank" style="color: #2563eb; text-decoration: none;">www.awenueglobalsoftwaresolutions.in</a></span> &bull; 
                     <span>Direct: <a href="mailto:${BRAND.supportEmail}" style="color: #2563eb; text-decoration: none;">${BRAND.supportEmail}</a></span>
                   </td>
                 </tr>
@@ -254,7 +306,8 @@ function renderSupportEmailShell({ previewText, headline, subheadline, contentHt
 // DEDICATED BILLING & INVOICE EMAIL SHELL (BILLING & ACCOUNTS)
 // ============================================================================
 
-function renderBillingEmailShell({ previewText, headline, subheadline, contentHtml, ctaText, ctaUrl, invoiceNumber }) {
+export function renderBillingEmailShell({ previewText, headline, subheadline, contentHtml, ctaText, ctaUrl, invoiceNumber }) {
+  const safeCtaUrl = sanitizeUrl(ctaUrl)
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -278,7 +331,6 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
   </style>
 </head>
 <body style="margin: 0; padding: 24px 0; background-color: #f1f5f9;">
-  <!-- Hidden preview text for email client inbox list -->
   <div style="display: none; font-size: 1px; color: #f1f5f9; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
     ${escapeHtml(previewText)}
     &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
@@ -303,11 +355,10 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="vertical-align: middle; padding-right: 12px;">
-                          <!-- Official Brand Logo -->
                           <img src="${BRAND.logoUrl}" width="42" height="42" alt="AWENUE" style="display: block; width: 42px; height: 42px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);" />
                         </td>
                         <td style="vertical-align: middle;">
-                          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          <div style="font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase;">
                             AWENUE
                           </div>
                           <div style="font-size: 10px; color: #10b981; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 2px; font-weight: 600;">
@@ -319,7 +370,7 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); color: #a7f3d0; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.75px;">
-                      💼 Accounts &amp; Billing
+                      Accounts &amp; Billing
                     </span>
                   </td>
                 </tr>
@@ -333,7 +384,7 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <span>Official Electronic Tax Invoice &amp; Remittance Notice</span>
+                    <span>Official Financial Communication</span>
                   </td>
                   ${invoiceNumber ? `
                     <td align="right" style="font-weight: 700; color: #34d399;">
@@ -361,16 +412,16 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
               ${contentHtml}
 
               <!-- Primary Billing CTA Button -->
-              ${ctaText && ctaUrl ? `
+              ${ctaText && safeCtaUrl !== '#' ? `
                 <div style="margin: 32px 0 20px 0; text-align: center;">
-                  <a href="${escapeHtml(ctaUrl)}" class="btn-billing" target="_blank" style="background-color: #059669; color: #ffffff; display: inline-block; padding: 14px 34px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25);">
+                  <a href="${escapeHtml(safeCtaUrl)}" class="btn-billing" target="_blank" style="background-color: #059669; color: #ffffff; display: inline-block; padding: 14px 34px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25);">
                     ${escapeHtml(ctaText)} &rarr;
                   </a>
                 </div>
                 <div style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 8px;">
                   If the button does not open, visit:
                   <br />
-                  <a href="${escapeHtml(ctaUrl)}" style="color: #059669; word-break: break-all;">${escapeHtml(ctaUrl)}</a>
+                  <a href="${escapeHtml(safeCtaUrl)}" style="color: #059669; word-break: break-all;">${escapeHtml(safeCtaUrl)}</a>
                 </div>
               ` : ''}
             </td>
@@ -390,7 +441,7 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
                 <tr>
                   <td style="vertical-align: top; padding-bottom: 12px;">
                     <strong style="color: #0f172a; font-size: 13px;">AWENUE Billing &amp; Finance Department</strong><br />
-                    <span>Official Tax Invoice &amp; Financial Communication &bull; Registered for GST &amp; Software Services</span><br />
+                    <span>Official Financial Communication &bull; Software Services &bull; ${BRAND.address}</span><br />
                     <span>Website: <a href="${BRAND.website}" target="_blank" style="color: #059669; text-decoration: none;">www.awenueglobalsoftwaresolutions.in</a></span> &bull; 
                     <span>Direct: <a href="mailto:${BRAND.billingEmail}" style="color: #059669; text-decoration: none;">${BRAND.billingEmail}</a></span>
                   </td>
@@ -413,7 +464,7 @@ function renderBillingEmailShell({ previewText, headline, subheadline, contentHt
 }
 
 // Backward compatibility helper
-function renderEmailShell(opts) {
+export function renderEmailShell(opts) {
   if (opts.senderType === 'billing') {
     return renderBillingEmailShell(opts)
   }
@@ -421,7 +472,7 @@ function renderEmailShell(opts) {
 }
 
 // ============================================================================
-// 1. SUPPORT TICKET TEMPLATES
+// 1. SUPPORT TICKET TEMPLATES (Dedicated to support@awenueglobalsoftwaresolutions.in)
 // ============================================================================
 
 export function renderTicketCreatedEmail(data) {
@@ -523,7 +574,7 @@ export function renderTicketReplyEmail(data) {
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td>
-              <strong style="color: #1e40af; font-size: 13px;">👨‍💻 Response from ${escapeHtml(agentName)}</strong>
+              <strong style="color: #1e40af; font-size: 13px;">Response from ${escapeHtml(agentName)}</strong>
             </td>
             <td align="right" style="font-size: 11px; color: #64748b;">
               AWENUE Support Team
@@ -659,7 +710,7 @@ export function renderTicketResolvedEmail(data) {
     <!-- Resolution Showcase Card -->
     <div style="margin: 22px 0; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #16a34a; border-radius: 4px 10px 10px 4px; padding: 20px; box-shadow: 0 2px 6px rgba(22,163,74,0.06);">
       <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
-        ✅ Resolution Summary
+        Resolution Summary
       </div>
       <div style="font-size: 14px; line-height: 1.7; color: #14532d;">
         ${formatTextBody(resolution || 'The requested issue has been investigated and resolved.')}
@@ -705,163 +756,108 @@ support@awenueglobalsoftwaresolutions.in`
 }
 
 // ============================================================================
-// 2. BILLING & INVOICE TEMPLATES
+// 2. BILLING & INVOICE TEMPLATES (Dedicated to billing@awenueglobalsoftwaresolutions.in)
 // ============================================================================
 
-const CURRENCY_SYMBOLS = {
-  INR: '₹',
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  AED: 'AED ',
-  CAD: 'C$',
-  AUD: 'A$',
-}
-
-export function formatCurrency(amount, currency = 'INR', spaced = true) {
-  const num = Number(amount) || 0
-  const sym = CURRENCY_SYMBOLS[currency] || `${currency} `
-  const isNeg = num < 0
-  const absNum = Math.abs(num)
-  const formatted = new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(absNum)
-
-  return `${isNeg ? '−' : ''}${sym}${spaced && !sym.endsWith(' ') ? ' ' : ''}${formatted}`
-}
-
-export function formatOrdinalDate(isoStr) {
-  if (!isoStr) return '—'
-  try {
-    const [y, m, d] = String(isoStr).slice(0, 10).split('-').map(Number)
-    if (!y || !m || !d) return String(isoStr)
-    const suffix = d % 100 >= 11 && d % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[d % 10] || 'th')
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    return `${d}${suffix} ${months[m - 1]} ${y}`
-  } catch {
-    return String(isoStr)
-  }
-}
-
+/**
+ * Clean & Official Invoice Generated Email Template
+ * Wording complies strictly with Section 6 of AWENUE Master Specification.
+ */
 export function renderInvoiceGeneratedEmail(data) {
   const {
     clientName = 'Client',
     invoiceNumber,
-    invoiceDate = new Date().toISOString().slice(0, 10),
     dueDate,
     amount,
     currency = 'INR',
-    taxTotal = 0,
-    subtotal = null,
-    discountTotal = 0,
-    amountPaid = 0,
-    balance = null,
-    paymentStatus = 'unpaid',
     paymentInstructions,
-    terms,
-    notes,
-    invoiceUrl,
     issuer = {},
     billTo = {},
-    items = [],
+    hasAttachment = true,
   } = data
 
-  const templateStyle = data.templateStyle || data.template_style || 'clean_letter'
   const customSubject = data.customSubject || data.custom_subject
   const customBody = data.customBody || data.custom_body
   const dealTitle = data.dealTitle || data.deal?.title
 
-  const subjectLine = customSubject || data.subject || (dealTitle
-    ? `Invoice #${invoiceNumber} for ${dealTitle} from AWENUE Global Software Solutions`
-    : `Invoice #${invoiceNumber} from AWENUE Global Software Solutions`)
-  const previewText = `Invoice #${invoiceNumber} from AWENUE Global Software Solutions for ${currency} ${Number(amount).toLocaleString()}`
+  // Subject: "Invoice {{invoice.number}} | AWENUE Global Software Solutions"
+  const subjectLine = customSubject || data.subject || `Invoice #${invoiceNumber} | AWENUE Global Software Solutions`
+  const previewText = `Invoice #${invoiceNumber} from AWENUE Global Software Solutions for ${currency} ${Number(amount || 0).toLocaleString()}`
 
-  // Issuer (From) details
-  const companyName = issuer.company_name || 'AWENUE Global Software Solutions'
-  const companyAddress = issuer.address || 'AWENUE Global Software Solutions, Varanasi, Uttar Pradesh, India'
-  const companyEmail = issuer.email || 'billing@awenueglobalsoftwaresolutions.in'
-  const companyPhone = issuer.phone || '+91 93051 45450'
-  const companyWebsite = (issuer.website || 'www.awenueglobalsoftwaresolutions.in').replace(/^https?:\/\//i, '').replace(/\/$/, '')
-  const companyTaxId = issuer.tax_id || ''
-  const logoUrl = issuer.logo_url || 'https://awenuesalesos.vercel.app/brand/awenue-logo.png'
-
-  // Bill To (Client) details
+  // Issuer & Client contact
+  const companyEmail = issuer.email || BRAND.billingEmail
+  const companyWebsite = (issuer.website || BRAND.website).replace(/^https?:\/\//i, '').replace(/\/$/, '')
+  const logoUrl = issuer.logo_url || BRAND.invoiceLogoUrl
   const billToName = billTo.name || clientName
-  const billToAddress = billTo.address || ''
-  const billToEmail = billTo.email || ''
-  const billToPhone = billTo.phone || ''
-  const billToTaxId = billTo.tax_id || ''
-
-  const formattedInvoiceDate = formatOrdinalDate(invoiceDate)
   const formattedDueDate = dueDate ? formatOrdinalDate(dueDate) : 'Due upon receipt'
 
   let bodyHtml = ''
-    if (customBody) {
-      bodyHtml = escapeHtml(customBody)
-        .split('\n\n')
-        .map((p) => `<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">${p.replace(/\n/g, '<br/>')}</p>`)
-        .join('')
-    } else {
-      bodyHtml = `
-        <p style="margin: 0 0 16px 0; font-size: 15px; color: #1e293b;">Dear ${escapeHtml(billToName)},</p>
-        <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          Greetings from <strong>AWENUE Global Software Solutions</strong>!<br/>
-          We hope you are doing well.
-        </p>
-        <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          Please find attached the invoice for <strong>${escapeHtml(dealTitle || 'Professional Software Services')}</strong>, issued by AWENUE Global Software Solutions.
-        </p>
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 24px; margin: 24px 0;">
-          <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-            Invoice Details
-          </div>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="padding: 6px 0; font-size: 13px; color: #64748b; width: 42%;">Invoice Number:</td>
-              <td style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace;">#${escapeHtml(invoiceNumber)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Total Amount:</td>
-              <td style="padding: 6px 0; font-size: 15px; font-weight: 800; color: #059669;">${formatCurrency(amount, currency)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Payment Due Date:</td>
-              <td style="padding: 6px 0; font-size: 13px; font-weight: 600; color: #b91c1c;">${escapeHtml(formattedDueDate)}</td>
-            </tr>
-            ${paymentInstructions ? `
-            <tr>
-              <td style="padding: 8px 0 4px 0; font-size: 13px; color: #64748b; vertical-align: top;">Payment Instructions:</td>
-              <td style="padding: 8px 0 4px 0; font-size: 13px; color: #0f172a; vertical-align: top;">${escapeHtml(paymentInstructions)}</td>
-            </tr>` : ''}
-          </table>
-        </div>
-        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          We kindly request you to review the attached invoice and arrange the payment on or before the specified due date.
-        </p>
-        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          Should you have any questions, require clarification regarding the invoice, or need any assistance with the payment process, please feel free to contact our Billing Department at <a href="mailto:${companyEmail}" style="color: #059669; font-weight: 600; text-decoration: none;">${companyEmail}</a>.
-        </p>
-        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          We sincerely appreciate your trust in <strong>AWENUE Global Software Solutions</strong> and value the opportunity to work with you. We look forward to building a long-term and successful business relationship.
-        </p>
-        <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-          Thank you for choosing AWENUE Global Software Solutions.
-        </p>
-        <div style="margin: 28px 0; font-size: 14px; line-height: 1.6; color: #1e293b;">
-          <strong>Warm Regards,</strong><br/>
-          Billing Department<br/>
-          <strong>AWENUE Global Software Solutions</strong><br/>
-          Email: <a href="mailto:${companyEmail}" style="color: #059669; text-decoration: none;">${companyEmail}</a><br/>
-          Website: <a href="https://${companyWebsite}/" target="_blank" style="color: #059669; text-decoration: none;">https://${companyWebsite}/</a>
-        </div>
-        <div style="margin-top: 24px; padding: 12px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #166534;">
-          📎 Please find your invoice attached to this email for your reference and records.
-        </div>
-      `
-    }
+  if (customBody) {
+    bodyHtml = escapeHtml(customBody)
+      .split('\n\n')
+      .map((p) => `<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">${p.replace(/\n/g, '<br/>')}</p>`)
+      .join('')
+  } else {
+    bodyHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px; color: #1e293b;">Dear ${escapeHtml(billToName)},</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+        Please find attached the invoice for <strong>${escapeHtml(dealTitle || 'Professional Software Services')}</strong> issued by AWENUE Global Software Solutions.
+      </p>
 
-    const html = `<!DOCTYPE html>
+      <!-- Invoice Details Box -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 24px; margin: 24px 0;">
+        <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+          Invoice Details
+        </div>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding: 6px 0; font-size: 13px; color: #64748b; width: 42%;">Invoice Number:</td>
+            <td style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace;">#${escapeHtml(invoiceNumber)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Total Amount:</td>
+            <td style="padding: 6px 0; font-size: 15px; font-weight: 800; color: #059669;">${formatCurrency(amount, currency)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Payment Due Date:</td>
+            <td style="padding: 6px 0; font-size: 13px; font-weight: 600; color: #b91c1c;">${escapeHtml(formattedDueDate)}</td>
+          </tr>
+          ${paymentInstructions ? `
+          <tr>
+            <td style="padding: 8px 0 4px 0; font-size: 13px; color: #64748b; vertical-align: top;">Payment Instructions:</td>
+            <td style="padding: 8px 0 4px 0; font-size: 13px; color: #0f172a; vertical-align: top;">${escapeHtml(paymentInstructions)}</td>
+          </tr>` : ''}
+        </table>
+      </div>
+
+      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+        Kindly review the attached invoice and arrange payment by the due date.
+      </p>
+
+      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+        For any invoice-related queries or payment assistance, please contact us at <a href="mailto:${companyEmail}" style="color: #059669; font-weight: 600; text-decoration: none;">${companyEmail}</a>.
+      </p>
+
+      <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+        Thank you for your business and continued trust in AWENUE Global Software Solutions.
+      </p>
+
+      <div style="margin: 28px 0; font-size: 14px; line-height: 1.6; color: #1e293b;">
+        <strong>Best Regards,</strong><br/>
+        Billing Department<br/>
+        <strong>AWENUE Global Software Solutions</strong><br/>
+        Email: <a href="mailto:${companyEmail}" style="color: #059669; text-decoration: none;">${companyEmail}</a><br/>
+        Website: <a href="https://${companyWebsite}/" target="_blank" style="color: #059669; text-decoration: none;">https://${companyWebsite}/</a>
+      </div>
+
+      ${hasAttachment ? `
+      <div style="margin-top: 24px; padding: 12px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #166534;">
+        📎 Please find your invoice attached to this email for your reference and records.
+      </div>` : ''}
+    `
+  }
+
+  const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
@@ -890,7 +886,7 @@ export function renderInvoiceGeneratedEmail(data) {
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 36px 32px; text-align: left;">
           <tr>
             <td>
-              <!-- Clean AWENUE Logo Only Header -->
+              <!-- Clean AWENUE Logo Header -->
               <div style="margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9;">
                 <img src="${logoUrl}" alt="AWENUE Global Software Solutions" height="46" style="display: block; max-height: 46px; width: auto; border: 0;" />
               </div>
@@ -905,44 +901,38 @@ export function renderInvoiceGeneratedEmail(data) {
 </body>
 </html>`
 
-    const text = customBody || `Dear ${billToName},
+  const text = customBody || `Dear ${billToName},
 
-Greetings from AWENUE Global Software Solutions!
-We hope you are doing well.
-
-Please find attached the invoice for ${dealTitle || 'Professional Software Services'}, issued by AWENUE Global Software Solutions.
+Please find attached the invoice for ${dealTitle || 'Professional Software Services'} issued by AWENUE Global Software Solutions.
 
 Invoice Details
 Invoice Number: #${invoiceNumber}
 Total Amount: ${formatCurrency(amount, currency)}
 Payment Due Date: ${formattedDueDate}
 ${paymentInstructions ? `Payment Instructions: ${paymentInstructions}\n` : ''}
-We kindly request you to review the attached invoice and arrange the payment on or before the specified due date.
+Kindly review the attached invoice and arrange payment by the due date.
 
-Should you have any questions, require clarification regarding the invoice, or need any assistance with the payment process, please feel free to contact our Billing Department at ${companyEmail}.
+For any invoice-related queries or payment assistance, please contact us at ${companyEmail}.
 
-We sincerely appreciate your trust in AWENUE Global Software Solutions and value the opportunity to work with you. We look forward to building a long-term and successful business relationship.
+Thank you for your business and continued trust in AWENUE Global Software Solutions.
 
-Thank you for choosing AWENUE Global Software Solutions.
-
-Warm Regards,
+Best Regards,
 Billing Department
 AWENUE Global Software Solutions
-Email: ${companyEmail}
-Website: https://${companyWebsite}/
+${companyEmail}
+https://${companyWebsite}/
 
-Please find your invoice attached to this email for your reference and records.`
+${hasAttachment ? 'Please find your invoice attached to this email for your reference and records.' : ''}`
 
   return { subject: subjectLine, html, text }
 }
-
 
 export function renderPaymentConfirmationEmail(data) {
   const {
     clientName = 'Client',
     invoiceNumber,
     paymentRef = 'N/A',
-    amountPaid,
+    amountPaid = 0,
     paymentDate = new Date().toISOString().slice(0, 10),
     paymentMethod = 'Bank Transfer',
     remainingBalance = 0,
@@ -952,18 +942,17 @@ export function renderPaymentConfirmationEmail(data) {
 
   const subjectLine = `Payment Received — Invoice #${invoiceNumber}`
   const previewText = `Payment of ${currency} ${Number(amountPaid).toLocaleString()} confirmed for invoice #${invoiceNumber}`
-
   const isFullyPaid = Number(remainingBalance) <= 0
 
   const contentHtml = `
     <p>Dear ${escapeHtml(clientName)},</p>
     <p>We gratefully acknowledge receipt of your payment for invoice <strong>#${escapeHtml(invoiceNumber)}</strong>. Your payment has been verified by our accounts department and applied to your balance.</p>
 
-    <!-- Payment Received Hero Banner -->
+    <!-- Payment Received Banner -->
     <div style="margin: 24px 0; padding: 24px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-top: 4px solid #16a34a; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(22,163,74,0.06);">
       <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 1px;">AMOUNT PAID &amp; CONFIRMED</div>
-      <div style="font-size: 32px; font-weight: 800; color: #15803d; margin: 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        ${escapeHtml(currency)} ${Number(amountPaid).toLocaleString()}
+      <div style="font-size: 32px; font-weight: 800; color: #15803d; margin: 8px 0;">
+        ${formatCurrency(amountPaid, currency)}
       </div>
       <div style="font-size: 12px; color: #166534; font-weight: 600;">
         Transaction Reference: <span style="font-family: monospace; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">${escapeHtml(paymentRef)}</span>
@@ -974,7 +963,7 @@ export function renderPaymentConfirmationEmail(data) {
       ['Invoice Number', `<strong>#${escapeHtml(invoiceNumber)}</strong>`],
       ['Payment Date', escapeHtml(paymentDate)],
       ['Payment Method', escapeHtml(paymentMethod.replace(/_/g, ' '))],
-      ['Remaining Balance', `<strong style="font-size: 14px; color: ${isFullyPaid ? '#15803d' : '#d97706'};">${escapeHtml(currency)} ${Number(remainingBalance).toLocaleString()}</strong>`],
+      ['Remaining Balance', `<strong style="font-size: 14px; color: ${isFullyPaid ? '#15803d' : '#d97706'};">${formatCurrency(remainingBalance, currency)}</strong>`],
       ['Account Status', isFullyPaid ? '<span style="display: inline-block; background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700;">● Paid in Full</span>' : '<span style="display: inline-block; background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700;">● Partially Paid</span>'],
     ])}
 
@@ -986,7 +975,7 @@ export function renderPaymentConfirmationEmail(data) {
   const html = renderBillingEmailShell({
     previewText,
     headline: 'Payment Received & Verified',
-    subheadline: `Payment of ${currency} ${Number(amountPaid).toLocaleString()} recorded successfully.`,
+    subheadline: `Payment of ${formatCurrency(amountPaid, currency)} recorded successfully.`,
     contentHtml,
     ctaText: 'View Receipt & Invoice',
     ctaUrl: receiptUrl || `${BRAND.website}/invoices/${invoiceNumber}`,
@@ -998,11 +987,11 @@ export function renderPaymentConfirmationEmail(data) {
 We gratefully acknowledge receipt of your payment for invoice #${invoiceNumber}.
 
 PAYMENT DETAILS:
-- Amount Paid: ${currency} ${Number(amountPaid).toLocaleString()}
+- Amount Paid: ${formatCurrency(amountPaid, currency)}
 - Transaction Reference: ${paymentRef}
 - Payment Date: ${paymentDate}
 - Method: ${paymentMethod}
-- Remaining Balance: ${currency} ${Number(remainingBalance).toLocaleString()}
+- Remaining Balance: ${formatCurrency(remainingBalance, currency)}
 - Status: ${isFullyPaid ? 'Paid in Full' : 'Partially Paid'}
 
 View updated invoice:
@@ -1021,7 +1010,7 @@ export function renderInvoiceReminderEmail(data) {
     clientName = 'Client',
     invoiceNumber,
     dueDate,
-    balance,
+    balance = 0,
     currency = 'INR',
     daysLabel = 'upcoming',
     paymentInstructions,
@@ -1033,7 +1022,7 @@ export function renderInvoiceReminderEmail(data) {
     ? `Urgent: Invoice #${invoiceNumber} is Due Today`
     : `Reminder: Invoice #${invoiceNumber} is Due Soon (${dueDate})`
 
-  const previewText = `Reminder: Payment for invoice #${invoiceNumber} (${currency} ${Number(balance).toLocaleString()}) is ${isToday ? 'due today' : `due on ${dueDate}`}`
+  const previewText = `Reminder: Payment for invoice #${invoiceNumber} (${formatCurrency(balance, currency)}) is ${isToday ? 'due today' : `due on ${dueDate}`}`
 
   const contentHtml = `
     <p>Dear ${escapeHtml(clientName)},</p>
@@ -1044,8 +1033,8 @@ export function renderInvoiceReminderEmail(data) {
       <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #92400e;">
         ${isToday ? 'PAYMENT DUE TODAY' : 'UPCOMING OUTSTANDING BALANCE'}
       </div>
-      <div style="font-size: 32px; font-weight: 800; color: #b45309; margin: 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        ${escapeHtml(currency)} ${Number(balance).toLocaleString()}
+      <div style="font-size: 32px; font-weight: 800; color: #b45309; margin: 8px 0;">
+        ${formatCurrency(balance, currency)}
       </div>
       <div style="font-size: 12px; color: #78350f; font-weight: 600;">
         Due Date: ${escapeHtml(dueDate)}
@@ -1055,7 +1044,7 @@ export function renderInvoiceReminderEmail(data) {
     ${renderMetaTable([
       ['Invoice Number', `<strong>#${escapeHtml(invoiceNumber)}</strong>`],
       ['Due Date', `<strong style="color: ${isToday ? '#dc2626' : '#0f172a'};">${escapeHtml(dueDate)}</strong>`],
-      ['Outstanding Balance', `<span style="font-size: 15px; font-weight: 700; color: #dc2626;">${escapeHtml(currency)} ${Number(balance).toLocaleString()}</span>`],
+      ['Outstanding Balance', `<span style="font-size: 15px; font-weight: 700; color: #dc2626;">${formatCurrency(balance, currency)}</span>`],
     ])}
 
     ${paymentInstructions ? `
@@ -1073,7 +1062,7 @@ export function renderInvoiceReminderEmail(data) {
   const html = renderBillingEmailShell({
     previewText,
     headline: isToday ? `Invoice #${invoiceNumber} Due Today` : `Upcoming Payment Reminder`,
-    subheadline: `Balance due: ${currency} ${Number(balance).toLocaleString()}`,
+    subheadline: `Balance due: ${formatCurrency(balance, currency)}`,
     contentHtml,
     ctaText: 'Review & Pay Invoice Online',
     ctaUrl: invoiceUrl || `${BRAND.website}/invoices/${invoiceNumber}`,
@@ -1084,7 +1073,7 @@ export function renderInvoiceReminderEmail(data) {
 
 This is a reminder regarding invoice #${invoiceNumber}, which is due on ${dueDate}.
 
-Balance Due: ${currency} ${Number(balance).toLocaleString()}
+Balance Due: ${formatCurrency(balance, currency)}
 
 Please review and make payment via:
 ${invoiceUrl || `${BRAND.website}/invoices/${invoiceNumber}`}
@@ -1102,7 +1091,7 @@ export function renderPaymentOverdueEmail(data) {
     clientName = 'Client',
     invoiceNumber,
     dueDate,
-    balance,
+    balance = 0,
     daysOverdue = 1,
     currency = 'INR',
     paymentInstructions,
@@ -1110,7 +1099,7 @@ export function renderPaymentOverdueEmail(data) {
   } = data
 
   const subjectLine = `OVERDUE NOTICE: Invoice #${invoiceNumber} (${daysOverdue} days past due)`
-  const previewText = `Action required: Invoice #${invoiceNumber} is ${daysOverdue} days overdue. Total balance: ${currency} ${Number(balance).toLocaleString()}`
+  const previewText = `Action required: Invoice #${invoiceNumber} is ${daysOverdue} days overdue. Total balance: ${formatCurrency(balance, currency)}`
 
   const contentHtml = `
     <p>Dear ${escapeHtml(clientName)},</p>
@@ -1118,11 +1107,11 @@ export function renderPaymentOverdueEmail(data) {
       Our records indicate that we have not yet received payment for invoice #${escapeHtml(invoiceNumber)}, which fell due on ${escapeHtml(dueDate)}.
     </p>
 
-    <!-- Urgent Overdue Hero Banner -->
+    <!-- Urgent Overdue Banner -->
     <div style="margin: 24px 0; padding: 24px; background-color: #fef2f2; border: 1px solid #fecaca; border-top: 4px solid #dc2626; border-radius: 8px; text-align: center; box-shadow: 0 2px 6px rgba(220,38,38,0.06);">
       <div style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 1px;">OVERDUE BALANCE REQUIRING ATTENTION</div>
-      <div style="font-size: 32px; font-weight: 800; color: #dc2626; margin: 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        ${escapeHtml(currency)} ${Number(balance).toLocaleString()}
+      <div style="font-size: 32px; font-weight: 800; color: #dc2626; margin: 8px 0;">
+        ${formatCurrency(balance, currency)}
       </div>
       <div style="display: inline-block; background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 9999px;">
         ⚠️ ${escapeHtml(daysOverdue)} Day(s) Past Due (${escapeHtml(dueDate)})
@@ -1133,7 +1122,7 @@ export function renderPaymentOverdueEmail(data) {
       ['Invoice Number', `<strong>#${escapeHtml(invoiceNumber)}</strong>`],
       ['Original Due Date', escapeHtml(dueDate)],
       ['Days Past Due', `<strong style="color: #dc2626;">${escapeHtml(daysOverdue)} day(s)</strong>`],
-      ['Total Overdue', `<span style="font-size: 15px; font-weight: 700; color: #dc2626;">${escapeHtml(currency)} ${Number(balance).toLocaleString()}</span>`],
+      ['Total Overdue', `<span style="font-size: 15px; font-weight: 700; color: #dc2626;">${formatCurrency(balance, currency)}</span>`],
     ])}
 
     ${paymentInstructions ? `
@@ -1163,7 +1152,7 @@ export function renderPaymentOverdueEmail(data) {
 OVERDUE NOTICE:
 Our records indicate that payment for invoice #${invoiceNumber} has not been received.
 Due Date: ${dueDate} (${daysOverdue} days past due)
-Outstanding Balance: ${currency} ${Number(balance).toLocaleString()}
+Outstanding Balance: ${formatCurrency(balance, currency)}
 
 Please arrange immediate payment via:
 ${invoiceUrl || `${BRAND.website}/invoices/${invoiceNumber}`}
