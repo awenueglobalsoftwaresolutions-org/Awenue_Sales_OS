@@ -23,13 +23,66 @@ export async function listInvoices({ page, pageSize, search, filters, sort }) {
 export async function getInvoice(id) {
   const { data, error } = await supabase.from('invoices').select(`${BASE}, lead:leads(id,lead_number,first_name,last_name), deal:deals(id,title), items:invoice_items(*), events:invoice_events(id,event_type,description,created_at,user_id), sends:invoice_sends(id,channel,recipient,sent_at), payments:invoice_payments(*)`).eq('id', id).maybeSingle()
   if (error) throw error
+  if (!data) return null
+
+  // Ensure custom issuer details and defaults are merged from the database settings
+  try {
+    const { data: s } = await supabase.from('invoice_settings').select('*').maybeSingle()
+    if (s) {
+      data.issuer = {
+        company_name: s.company_name || data.issuer?.company_name || 'AWENUE Global Software Solutions',
+        address: s.address || data.issuer?.address || '',
+        email: s.email || data.issuer?.email || 'billing@awenueglobalsoftwaresolutions.in',
+        phone: s.phone || data.issuer?.phone || '',
+        website: s.website || data.issuer?.website || 'www.awenueglobalsoftwaresolutions.in',
+        tax_id: s.tax_id || data.issuer?.tax_id || '',
+        logo_url: s.logo_url || data.issuer?.logo_url || null,
+        signature_url: s.signature_url || data.issuer?.signature_url || null,
+      }
+      if (!data.payment_instructions && s.payment_instructions) {
+        data.payment_instructions = s.payment_instructions
+      }
+      if (!data.terms && s.terms) {
+        data.terms = s.terms
+      }
+    }
+  } catch {
+    // Keep original data if settings lookup fails
+  }
+
   return data
 }
 
 export const getInvoiceSettings = () => run(supabase.from('invoice_settings').select('*').maybeSingle())
 export async function upsertInvoiceSettings(values, workspaceId) {
-  const { error } = await supabase.from('invoice_settings').update(values).eq('workspace_id', workspaceId)
+  let wsId = workspaceId
+  if (!wsId) {
+    const { data: currentWs } = await supabase.rpc('current_workspace_id').catch(() => ({}))
+    wsId = currentWs
+  }
+  if (!wsId) {
+    const existing = await supabase.from('invoice_settings').select('workspace_id').limit(1).maybeSingle()
+    wsId = existing.data?.workspace_id
+  }
+  if (!wsId) {
+    const { data: ws } = await supabase.from('workspaces').select('id').limit(1).maybeSingle()
+    wsId = ws?.id
+  }
+
+  const payload = {
+    ...values,
+    workspace_id: wsId,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data, error } = await supabase
+    .from('invoice_settings')
+    .upsert(payload, { onConflict: 'workspace_id' })
+    .select('*')
+    .single()
+
   if (error) throw error
+  return data
 }
 
 export const saveInvoice = (invoice, items) => supabase.rpc('save_invoice', { p_invoice: invoice, p_items: items }).then(({ data, error }) => { if (error) throw error; return data })

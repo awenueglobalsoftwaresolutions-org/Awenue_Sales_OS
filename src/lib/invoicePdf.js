@@ -47,12 +47,32 @@ async function loadDefaultLogo() {
 
 export async function buildInvoicePdf(invoice, items) {
   const [{ jsPDF }, fontData] = await Promise.all([import('jspdf'), loadFonts()])
-  const issuer = invoice.issuer || {}
+  let issuer = invoice.issuer || {}
+  if (!issuer.company_name) {
+    try {
+      const { getInvoiceSettings } = await import('../services/invoices')
+      const s = await getInvoiceSettings()
+      if (s) {
+        issuer = {
+          company_name: s.company_name || issuer.company_name || 'AWENUE Global Software Solutions',
+          address: s.address || issuer.address || '',
+          email: s.email || issuer.email || 'billing@awenueglobalsoftwaresolutions.in',
+          phone: s.phone || issuer.phone || '',
+          website: s.website || issuer.website || 'www.awenueglobalsoftwaresolutions.in',
+          tax_id: s.tax_id || issuer.tax_id || '',
+          logo_url: s.logo_url || issuer.logo_url || null,
+          signature_url: s.signature_url || issuer.signature_url || null,
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
   const [uploaded, signature] = await Promise.all([loadImage(issuer.logo_url), loadImage(issuer.signature_url)])
   const logo = uploaded ? { ...uploaded, template: false } : await loadDefaultLogo()
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
   registerFonts(doc, fontData)
-  renderInvoice(doc, invoice, items, { logo, signature })
+  renderInvoice(doc, { ...invoice, issuer }, items, { logo, signature })
   doc.setProperties({ title: `Invoice ${invoice.invoice_number}`, subject: `Invoice for ${invoice.bill_to_name}`, creator: 'Awenue Sales OS' })
   return doc
 }

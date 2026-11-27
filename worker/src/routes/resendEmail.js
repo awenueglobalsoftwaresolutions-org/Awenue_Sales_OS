@@ -233,7 +233,7 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
   mustUuid(invoiceId, 'invoice')
 
   const r = await ctx.sb(
-    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,total,balance,tax_total,currency,status,payment_instructions,bill_to_name,bill_to_email,workspace_id,updated_at,cancelled_reason`
+    `invoices?id=eq.${invoiceId}&select=id,invoice_number,issue_date,due_date,total,balance,tax_total,currency,status,payment_instructions,bill_to_name,bill_to_email,workspace_id,updated_at,cancelled_reason,issuer`
   )
   const [inv] = r.ok ? await r.json() : []
   if (!inv) throw new HttpError(404, 'Invoice not found.')
@@ -241,6 +241,11 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
   if (inv.status === 'cancelled') {
     throw new HttpError(400, 'Cannot send a cancelled invoice as an active invoice. Cancelled invoices are frozen.')
   }
+
+  // Load custom database invoice settings
+  const sr = await ctx.sb(`invoice_settings?workspace_id=eq.${inv.workspace_id}&select=*`)
+  const [settings] = sr.ok ? await sr.json() : []
+  const paymentInstructions = inv.payment_instructions || settings?.payment_instructions || null
 
   const recipientEmail = (b.recipient_email || inv.bill_to_email || '').trim().toLowerCase()
   if (!recipientEmail || !EMAIL_RE.test(recipientEmail)) {
@@ -259,7 +264,7 @@ export async function sendInvoice(request, env, pathInvoiceId = null) {
     currency: inv.currency || 'INR',
     taxTotal: inv.tax_total,
     paymentStatus: inv.status,
-    paymentInstructions: inv.payment_instructions,
+    paymentInstructions,
     invoiceUrl,
   })
 

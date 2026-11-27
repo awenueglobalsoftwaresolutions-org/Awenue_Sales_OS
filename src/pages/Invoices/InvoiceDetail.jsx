@@ -247,7 +247,14 @@ export default function InvoiceDetail() {
         <section className="lg:col-span-2 space-y-4">
           <div className="rounded-xl border border-ink-100 bg-white p-5 shadow-card">
             <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
-              <div><p className="text-xs text-ink-500">From</p><p className="font-semibold">{d.issuer?.company_name}</p><p className="text-xs text-ink-500">{d.issuer?.address}</p><p className="text-xs text-ink-500">{d.issuer?.email}</p></div>
+              <div>
+                <p className="text-xs text-ink-500">From</p>
+                <p className="font-semibold text-ink-900">{d.issuer?.company_name || 'AWENUE Global Software Solutions'}</p>
+                {d.issuer?.address && <p className="text-xs text-ink-500">{d.issuer.address}</p>}
+                {d.issuer?.email && <p className="text-xs text-ink-500">{d.issuer.email}</p>}
+                {d.issuer?.phone && <p className="text-xs text-ink-500">{d.issuer.phone}</p>}
+                {d.issuer?.tax_id && <p className="text-xs text-ink-500 font-mono">Tax ID: {d.issuer.tax_id}</p>}
+              </div>
               <div><p className="text-xs text-ink-500">To</p><p className="font-semibold">{d.bill_to_name}</p>{d.bill_to_address && <p className="text-xs text-ink-500">{d.bill_to_address}</p>}{d.bill_to_email && <p className="text-xs text-ink-500">{d.bill_to_email}</p>}</div>
             </div>
             <table className="w-full text-sm">
