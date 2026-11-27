@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import {
   Bell,
@@ -93,7 +93,7 @@ export default function Topbar({ onOpenMobile }) {
 
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-ink-100 bg-white/95 px-3.5 backdrop-blur-md sm:px-6">
-      {/* Left side: Mobile trigger + Breadcrumb context + Search */}
+      {/* Left side: Mobile trigger + Mobile logo + Breadcrumb context + Search */}
       <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
         <button
           className="btn-ghost shrink-0 !p-2 text-ink-600 hover:bg-ink-100/70 hover:text-ink-900 lg:hidden"
@@ -102,6 +102,24 @@ export default function Topbar({ onOpenMobile }) {
         >
           <Menu className="h-5 w-5" />
         </button>
+
+        {/* Mobile Brand Logo */}
+        <Link
+          to="/"
+          className="flex items-center gap-2 shrink-0 lg:hidden group py-1"
+          aria-label="Awenue Home"
+        >
+          <img
+            src="/brand/awenue-mark.webp"
+            alt="Awenue"
+            width="28"
+            height="28"
+            className="h-7 w-7 object-contain transition-transform group-hover:scale-105"
+          />
+          <span className="hidden sm:inline-block font-bold text-[13px] tracking-tight text-ink-900 group-hover:text-brand-600 transition-colors">
+            Awenue
+          </span>
+        </Link>
 
         {/* Desktop Breadcrumb Navigator */}
         <div className="hidden items-center gap-1.5 border-r border-ink-200/60 pr-3.5 text-xs lg:flex select-none shrink-0">

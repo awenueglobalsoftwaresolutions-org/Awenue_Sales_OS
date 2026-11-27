@@ -35,9 +35,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
         {/* Brand Header */}
         <div className={`flex h-14 shrink-0 items-center border-b border-ink-100 px-3.5 ${wide ? 'justify-between gap-2' : 'justify-center'}`}>
           <Link to="/" onClick={onCloseMobile} className="flex min-w-0 items-center gap-2.5 group">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-sky-500 text-sm font-extrabold text-white shadow-sm ring-1 ring-brand-500/20 transition group-hover:scale-105" aria-hidden>
-              A
-            </div>
+            <img
+              src="/brand/awenue-mark.webp"
+              alt="Awenue"
+              width="32"
+              height="32"
+              className="h-8 w-8 shrink-0 object-contain transition-transform group-hover:scale-105"
+            />
             {wide && (
               <div className="min-w-0 leading-tight">
                 <p className="truncate text-[13px] font-bold tracking-tight text-ink-900 group-hover:text-brand-600 transition-colors">Awenue Sales OS</p>

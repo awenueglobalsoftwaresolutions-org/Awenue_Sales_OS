@@ -7,7 +7,13 @@ export default function AuthShell({ title, subtitle, children }) {
       <AuthBackdropArt />
       <div className="relative z-10 w-full max-w-sm animate-fade-up">
         <div className="mb-7 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white shadow-sm" aria-hidden>A</div>
+          <img
+            src="/brand/awenue-mark.webp"
+            alt="Awenue"
+            width="44"
+            height="44"
+            className="h-11 w-11 object-contain"
+          />
           <div className="leading-tight">
             <p className="font-bold text-ink-900">Awenue Sales OS</p>
             <p className="text-xs text-ink-500">Global Software Solutions</p>

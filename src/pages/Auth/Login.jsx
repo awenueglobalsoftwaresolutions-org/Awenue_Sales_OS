@@ -193,7 +193,7 @@ export default function Login() {
         {/* AWENUE Logo placed prominently right above Welcome Back! */}
         <div className="flex justify-center mb-6">
           <img
-            src="/brand/awenue-logo.png"
+            src="/brand/awenue-logo.webp"
             alt="AWENUE - Global Software Solutions"
             className="h-11 sm:h-13 w-auto object-contain"
           />
