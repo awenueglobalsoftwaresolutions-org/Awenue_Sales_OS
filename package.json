@@ -30,7 +30,7 @@
     "recharts": "^2.12.7",
     "resend": "^6.41.0",
     "sonner": "^1.5.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
