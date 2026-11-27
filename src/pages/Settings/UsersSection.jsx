@@ -3,20 +3,33 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
+  Activity,
   Ban,
   Briefcase,
+  Building2,
   Check,
   CheckCircle2,
+  CheckSquare,
+  ChevronDown,
+  ChevronUp,
+  Contact,
   Copy,
   CreditCard,
   Crown,
   Eye,
   FileText,
+  FolderKanban,
+  Handshake,
   KeyRound,
   Layers,
+  LayoutDashboard,
+  LifeBuoy,
   Lock,
+  Mail,
+  MessageSquare,
   Pencil,
   Plus,
+  Receipt,
   Search,
   Shield,
   ShieldAlert,
@@ -24,6 +37,8 @@ import {
   Sliders,
   Sparkles,
   Trash2,
+  UserPlus,
+  Users,
   Wrench,
   X,
   Zap,
@@ -56,6 +71,27 @@ import ErrorState from '../../components/common/ErrorState'
 import Modal from '../../components/common/Modal'
 import Spinner from '../../components/common/Spinner'
 import { Card } from './Sections'
+
+const MODULE_ICONS = {
+  dashboard: LayoutDashboard,
+  leads: UserPlus,
+  website_queries: MessageSquare,
+  organizations: Building2,
+  contacts: Contact,
+  deals: Handshake,
+  projects: FolderKanban,
+  tickets: LifeBuoy,
+  tasks: CheckSquare,
+  activities: Activity,
+  invoices: Receipt,
+  reports: FileText,
+  files: FileText,
+  communications: Mail,
+  users: Users,
+  roles: Shield,
+  settings: Sliders,
+  integrations: KeyRound,
+}
 
 const addSchema = z.object({
   full_name: z.string().trim().min(1, 'Enter a name').max(100),
@@ -205,13 +241,13 @@ const ACCESS_PRESETS = [
 
 // ============ SUPER ADMIN ACCESS CONTROL MODAL (RBAC + PBAC + ABAC) ============
 function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, onDone }) {
-  const [activeTab, setActiveTab] = useState('scope') // 'scope' | 'modules' | 'pbac'
   const [role, setRole] = useState(user.role || 'sales_executive')
   const [recordScope, setRecordScope] = useState(user.record_scope || 'all')
   const [exportAllowed, setExportAllowed] = useState(user.export_allowed !== false)
   const [customModules, setCustomModules] = useState(() => Boolean(user.allowed_modules && user.allowed_modules.length > 0))
   const [allowedModules, setAllowedModules] = useState(() => new Set(user.allowed_modules || ALL_SYSTEM_MODULES))
   const [overrides, setOverrides] = useState(new Map())
+  const [showOverrides, setShowOverrides] = useState(false)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -262,6 +298,7 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
 
   const toggleModule = (mod) => {
     setSelectedPreset(null)
+    setCustomModules(true)
     setAllowedModules((prev) => {
       const next = new Set(prev)
       if (next.has(mod)) next.delete(mod)
@@ -319,7 +356,7 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
         export_allowed: exportAllowed,
       })
       await saveUserPermissions(user.id, overridesList)
-      toast.success(`Access policy updated for ${user.full_name || user.email}`)
+      toast.success(`Access policy saved for ${user.full_name || user.email}`)
       onDone()
     } catch (e) {
       toast.error(friendlyError(e))
@@ -347,12 +384,12 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
   }, [filteredCatalog])
 
   return (
-    <Modal open title={`Access Control: ${user.full_name || user.email}`} size="lg" onClose={() => !saving && onClose()}>
-      <div className="space-y-4">
-        {/* User Summary Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ink-50 p-3">
+    <Modal open title={`Access Control: ${user.full_name || user.email}`} size="xl" onClose={() => !saving && onClose()}>
+      <div className="space-y-4 max-h-[82vh] overflow-y-auto pr-1 thin-scrollbar">
+        {/* User Identity Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ink-50 p-3 border border-ink-100">
           <div className="flex items-center gap-3">
-            <Avatar person={user} size={38} />
+            <Avatar person={user} size={42} />
             <div>
               <p className="text-sm font-bold text-ink-900">{user.full_name || '—'}</p>
               <p className="text-xs text-ink-500">{user.email} {user.job_title ? `· ${user.job_title}` : ''}</p>
@@ -360,21 +397,21 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
           </div>
           <div className="flex items-center gap-2">
             {isProtected && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                <Crown className="h-3 w-3 text-amber-600" /> Protected Founder
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                <Crown className="h-3.5 w-3.5 text-amber-600" /> Protected Founder
               </span>
             )}
             <Badge tone="brand">{currentRole?.name || role}</Badge>
           </div>
         </div>
 
-        {/* 1-Click Fast Presets Bar */}
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-ink-400">
-              <Zap className="h-3 w-3 text-amber-500" /> 1-Click Role & Security Presets
+        {/* 1-Click Role & Security Presets */}
+        <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-900">
+              <Zap className="h-3.5 w-3.5 text-amber-500" /> Fast 1-Click Access Templates
             </span>
-            <span className="text-[10px] text-ink-400">Click to apply instantly</span>
+            <span className="text-[11px] text-brand-600 font-medium">Click to configure role, scope & modules instantly</span>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {ACCESS_PRESETS.map((pst) => {
@@ -385,18 +422,18 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
                   key={pst.id}
                   type="button"
                   onClick={() => applyPreset(pst)}
-                  className={`flex items-start gap-2 rounded-lg border p-2 text-left transition ${
+                  className={`flex items-start gap-2.5 rounded-lg border p-2 text-left transition ${
                     active
-                      ? 'border-brand-600 bg-brand-50/60 ring-2 ring-brand-500/20 shadow-xs'
-                      : 'border-ink-200 bg-white hover:border-brand-300 hover:bg-ink-50/50'
+                      ? 'border-brand-600 bg-white ring-2 ring-brand-500/20 shadow-xs'
+                      : 'border-ink-200/80 bg-white hover:border-brand-300 hover:bg-brand-50/50'
                   }`}
                 >
-                  <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${active ? 'text-brand-600' : 'text-ink-500'}`} />
+                  <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${active ? 'text-brand-600' : 'text-ink-500'}`} />
                   <div className="min-w-0">
                     <p className={`text-xs font-semibold leading-tight truncate ${active ? 'text-brand-900' : 'text-ink-800'}`}>
                       {pst.name}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-ink-400 line-clamp-1">{pst.desc}</p>
+                    <p className="mt-0.5 text-[10px] text-ink-500 line-clamp-1">{pst.desc}</p>
                   </div>
                 </button>
               )
@@ -404,68 +441,14 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
           </div>
         </div>
 
-        {/* Live Policy Snapshot Banner */}
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-200 bg-ink-50/60 px-3 py-2 text-xs">
-          <span className="font-semibold text-ink-700">Active Policy:</span>
-          <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 font-medium text-brand-700 shadow-2xs border border-brand-200">
-            <Shield className="h-3 w-3" /> {roles.find((r) => r.key === role)?.name || role}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 font-medium text-ink-700 shadow-2xs border border-ink-200">
-            Scope: {recordScope === 'all' ? 'All Workspace' : recordScope === 'team' ? 'Direct Team' : 'Strict Own'}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 font-medium text-ink-700 shadow-2xs border border-ink-200">
-            Modules: {customModules ? `${allowedModules.size} of ${ALL_SYSTEM_MODULES.length}` : 'All (Role Default)'}
-          </span>
-          <span
-            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium border shadow-2xs ${
-              exportAllowed
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}
-          >
-            Export: {exportAllowed ? 'Enabled' : 'Blocked'}
-          </span>
-          {overrides.size > 0 && (
-            <span className="inline-flex items-center gap-1 rounded bg-violet-50 text-violet-800 border border-violet-200 px-2 py-0.5 font-medium shadow-2xs">
-              {overrides.size} PBAC Override{overrides.size > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-
-        {/* Tab navigation */}
-        <div className="flex border-b border-ink-100 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('scope')}
-            className={`flex items-center gap-1.5 border-b-2 px-4 py-2 transition ${activeTab === 'scope' ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
-          >
-            <Shield className="h-3.5 w-3.5" /> 1. Role & Scope
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('modules')}
-            className={`flex items-center gap-1.5 border-b-2 px-4 py-2 transition ${activeTab === 'modules' ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
-          >
-            <Layers className="h-3.5 w-3.5" /> 2. Allowed Modules
-            {customModules && <span className="rounded-full bg-brand-100 px-1.5 text-[10px] text-brand-700">{allowedModules.size}</span>}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('pbac')}
-            className={`flex items-center gap-1.5 border-b-2 px-4 py-2 transition ${activeTab === 'pbac' ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'}`}
-          >
-            <Sliders className="h-3.5 w-3.5" /> 3. Advanced Overrides
-            {overrides.size > 0 && <span className="rounded-full bg-violet-100 px-1.5 text-[10px] text-violet-700">{overrides.size}</span>}
-          </button>
-        </div>
-
-        {/* TAB 1: RBAC & Data Scope */}
-        {activeTab === 'scope' && (
-          <div className="space-y-4 pt-1">
+        {/* SECTION 1: Baseline Role & Data Scope */}
+        <div className="grid gap-3 rounded-xl border border-ink-100 p-3.5 sm:grid-cols-2">
+          {/* Left: Role Selection & Export Toggle */}
+          <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-ink-700">Assigned Role (RBAC)</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-500">1. Assigned Role (RBAC)</label>
               <select
-                className="input mt-1 w-full"
+                className="input mt-1.5 w-full font-medium"
                 value={role}
                 disabled={isProtected || (!isSuperAdmin && user.role === 'super_admin')}
                 onChange={(e) => { setSelectedPreset(null); setRole(e.target.value) }}
@@ -474,32 +457,10 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
                   <option key={r.key} value={r.key}>{r.name} {r.is_system ? '(Built-in)' : '(Custom)'}</option>
                 ))}
               </select>
-              <p className="mt-1 text-[11px] text-ink-500">The role sets baseline permissions across modules for this account.</p>
+              <p className="mt-1 text-[11px] text-ink-400">Sets baseline capabilities across modules.</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-ink-700">Record Data Scope (ABAC)</label>
-              <p className="mb-2 text-[11px] text-ink-500">Controls which records (leads, deals, tasks, projects) this user is allowed to view and edit.</p>
-              <div className="grid gap-2.5 sm:grid-cols-3">
-                <label className={`flex cursor-pointer flex-col rounded-xl border p-3 text-left transition ${recordScope === 'all' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
-                  <input type="radio" name="scope" value="all" checked={recordScope === 'all'} onChange={() => { setSelectedPreset(null); setRecordScope('all') }} className="sr-only" />
-                  <span className="font-semibold text-xs text-ink-900">Workspace-wide</span>
-                  <span className="mt-1 text-[11px] text-ink-500">Subject to role view/manage permissions.</span>
-                </label>
-                <label className={`flex cursor-pointer flex-col rounded-xl border p-3 text-left transition ${recordScope === 'team' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
-                  <input type="radio" name="scope" value="team" checked={recordScope === 'team'} onChange={() => { setSelectedPreset(null); setRecordScope('team') }} className="sr-only" />
-                  <span className="font-semibold text-xs text-ink-900">Team Scope</span>
-                  <span className="mt-1 text-[11px] text-ink-500">Own records plus records of direct reports.</span>
-                </label>
-                <label className={`flex cursor-pointer flex-col rounded-xl border p-3 text-left transition ${recordScope === 'own' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
-                  <input type="radio" name="scope" value="own" checked={recordScope === 'own'} onChange={() => { setSelectedPreset(null); setRecordScope('own') }} className="sr-only" />
-                  <span className="font-semibold text-xs text-ink-900">Strict Own Only</span>
-                  <span className="mt-1 text-[11px] text-ink-500">Isolated strictly to records assigned to or created by them.</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-ink-100 bg-ink-50/50 p-3">
+            <div className="rounded-lg border border-ink-200 p-2.5">
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -507,210 +468,270 @@ function UserAccessControlModal({ user, roles, catalog, isSuperAdmin, onClose, o
                   onChange={(e) => { setSelectedPreset(null); setExportAllowed(e.target.checked) }}
                   className="h-4 w-4 rounded accent-[#4b4bc4]"
                 />
-                <div>
-                  <p className="text-xs font-semibold text-ink-900">Allow Data Export (ABAC Policy)</p>
-                  <p className="text-[11px] text-ink-500">When disabled, this user cannot download or export CSV, Excel, or PDF data anywhere in the app.</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-ink-900">Allow Data Export</span>
+                    <span className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${exportAllowed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {exportAllowed ? 'Allowed' : 'Blocked'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-ink-400">When blocked, downloading CSV, Excel or PDF is disabled.</p>
                 </div>
               </label>
             </div>
           </div>
-        )}
 
-        {/* TAB 2: Allowed Modules (ABAC) */}
-        {activeTab === 'modules' && (
-          <div className="space-y-3 pt-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-semibold text-ink-900">Module Access Restrictions</p>
-                <p className="text-[11px] text-ink-500">Whitelist specific modules. Non-whitelisted modules won't appear in sidebar or topbar.</p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedPreset(null); setCustomModules(false); setAllowedModules(new Set(ALL_SYSTEM_MODULES)) }}
-                  className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${!customModules ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-300' : 'text-ink-600 hover:bg-ink-100'}`}
-                >
-                  All (Role Default)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => batchSetModules(['dashboard', 'leads', 'website_queries', 'organizations', 'contacts', 'deals', 'tasks', 'activities'])}
-                  className="rounded-lg border border-ink-200 px-2 py-1 text-xs text-ink-600 hover:bg-ink-50"
-                >
-                  CRM Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => batchSetModules(['dashboard', 'projects', 'tickets', 'tasks', 'activities', 'files'])}
-                  className="rounded-lg border border-ink-200 px-2 py-1 text-xs text-ink-600 hover:bg-ink-50"
-                >
-                  Ops Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => batchSetModules(['dashboard', 'invoices', 'reports', 'organizations', 'contacts'])}
-                  className="rounded-lg border border-ink-200 px-2 py-1 text-xs text-ink-600 hover:bg-ink-50"
-                >
-                  Finance Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedPreset(null); setCustomModules(true); setAllowedModules(new Set()) }}
-                  className="rounded-lg border border-ink-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
-                >
-                  Clear All
-                </button>
-              </div>
+          {/* Right: Record Data Scope */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-500 mb-1.5">2. Record Visibility Scope (ABAC)</label>
+            <div className="space-y-1.5">
+              <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2 text-left transition ${recordScope === 'own' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
+                <input type="radio" name="scope" value="own" checked={recordScope === 'own'} onChange={() => { setSelectedPreset(null); setRecordScope('own') }} className="mt-0.5 accent-[#4b4bc4]" />
+                <div>
+                  <span className="font-semibold text-xs text-ink-900">Strict Own Only</span>
+                  <p className="text-[10px] text-ink-500">Only records created by or assigned to them.</p>
+                </div>
+              </label>
+
+              <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2 text-left transition ${recordScope === 'team' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
+                <input type="radio" name="scope" value="team" checked={recordScope === 'team'} onChange={() => { setSelectedPreset(null); setRecordScope('team') }} className="mt-0.5 accent-[#4b4bc4]" />
+                <div>
+                  <span className="font-semibold text-xs text-ink-900">Direct Team Scope</span>
+                  <p className="text-[10px] text-ink-500">Own records plus direct reports reporting to them.</p>
+                </div>
+              </label>
+
+              <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2 text-left transition ${recordScope === 'all' ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600/30' : 'border-ink-200 hover:bg-ink-50'}`}>
+                <input type="radio" name="scope" value="all" checked={recordScope === 'all'} onChange={() => { setSelectedPreset(null); setRecordScope('all') }} className="mt-0.5 accent-[#4b4bc4]" />
+                <div>
+                  <span className="font-semibold text-xs text-ink-900">Entire Workspace</span>
+                  <p className="text-[10px] text-ink-500">Company-wide records (subject to role permissions).</p>
+                </div>
+              </label>
             </div>
-
-            {customModules ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {ALL_SYSTEM_MODULES.map((mod) => {
-                  const checked = allowedModules.has(mod)
-                  return (
-                    <label
-                      key={mod}
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition ${
-                        checked ? 'border-brand-300 bg-brand-50/40 font-semibold text-ink-900' : 'border-ink-200 text-ink-500 hover:bg-ink-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleModule(mod)}
-                        className="h-3.5 w-3.5 rounded accent-[#4b4bc4]"
-                      />
-                      <span>{MODULE_LABELS[mod] || mod}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/50 p-4 text-center">
-                <p className="text-xs font-semibold text-ink-800">All Modules Enabled by Role</p>
-                <p className="mt-1 text-[11px] text-ink-500">
-                  User will see all modules permitted by their role. Click any quick category above or customize below.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setCustomModules(true)}
-                  className="btn-ghost mt-2 border border-ink-300 text-xs"
-                >
-                  Customize Whitelist
-                </button>
-              </div>
-            )}
           </div>
-        )}
+        </div>
 
-        {/* TAB 3: Granular Permission Overrides (PBAC) */}
-        {activeTab === 'pbac' && (
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
-                <input
-                  className="input !py-1 !pl-8 text-xs"
-                  placeholder="Filter permissions or module..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+        {/* SECTION 2: Allowed Modules (Which screens can they open?) */}
+        <div className="rounded-xl border border-ink-100 p-3.5 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-ink-500">3. Allowed Modules & Screens (ABAC)</label>
+              <p className="text-[11px] text-ink-500">Unselected modules are completely hidden from sidebar, topbar, and database.</p>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => { setSelectedPreset(null); setCustomModules(false); setAllowedModules(new Set(ALL_SYSTEM_MODULES)) }}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition ${!customModules ? 'bg-brand-600 text-white font-semibold' : 'border border-ink-200 text-ink-600 hover:bg-ink-50'}`}
+              >
+                All Modules
+              </button>
+              <button
+                type="button"
+                onClick={() => batchSetModules(['dashboard', 'leads', 'website_queries', 'organizations', 'contacts', 'deals', 'tasks', 'activities'])}
+                className="rounded border border-ink-200 px-2 py-0.5 text-xs text-ink-600 hover:bg-ink-50"
+              >
+                CRM Only
+              </button>
+              <button
+                type="button"
+                onClick={() => batchSetModules(['dashboard', 'projects', 'tickets', 'tasks', 'activities', 'files'])}
+                className="rounded border border-ink-200 px-2 py-0.5 text-xs text-ink-600 hover:bg-ink-50"
+              >
+                Ops Only
+              </button>
+              <button
+                type="button"
+                onClick={() => batchSetModules(['dashboard', 'invoices', 'reports', 'organizations', 'contacts'])}
+                className="rounded border border-ink-200 px-2 py-0.5 text-xs text-ink-600 hover:bg-ink-50"
+              >
+                Finance Only
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectedPreset(null); setCustomModules(true); setAllowedModules(new Set()) }}
+                className="rounded border border-ink-200 px-2 py-0.5 text-xs text-rose-600 hover:bg-rose-50"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {ALL_SYSTEM_MODULES.map((mod) => {
+              const checked = allowedModules.has(mod)
+              const ModIcon = MODULE_ICONS[mod] || Layers
+              return (
+                <label
+                  key={mod}
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border p-2 text-xs transition ${
+                    checked
+                      ? 'border-brand-500 bg-brand-50/50 font-semibold text-brand-900 shadow-2xs'
+                      : 'border-ink-200 bg-white text-ink-400 hover:bg-ink-50/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <ModIcon className={`h-4 w-4 shrink-0 ${checked ? 'text-brand-600' : 'text-ink-400'}`} />
+                    <span className="truncate">{MODULE_LABELS[mod] || mod}</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleModule(mod)}
+                    className="h-3.5 w-3.5 rounded accent-[#4b4bc4]"
+                  />
+                </label>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* SECTION 3: Advanced Granular Overrides (PBAC Accordion) */}
+        <div className="rounded-xl border border-ink-100 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowOverrides((v) => !v)}
+            className="w-full flex items-center justify-between bg-ink-50/70 px-3.5 py-2.5 text-xs font-bold text-ink-700 hover:bg-ink-100/70 transition"
+          >
+            <div className="flex items-center gap-2">
+              <Sliders className="h-3.5 w-3.5 text-brand-600" />
+              <span>4. Advanced Permission Overrides (PBAC - Optional)</span>
               {overrides.size > 0 && (
-                <button type="button" onClick={() => setOverrides(new Map())} className="text-xs text-rose-600 hover:underline">
-                  Reset all overrides
-                </button>
+                <span className="rounded-full bg-violet-100 text-violet-800 px-2 py-0.5 text-[10px] font-bold">
+                  {overrides.size} Custom Override{overrides.size > 1 ? 's' : ''}
+                </span>
               )}
             </div>
+            {showOverrides ? <ChevronUp className="h-4 w-4 text-ink-400" /> : <ChevronDown className="h-4 w-4 text-ink-400" />}
+          </button>
 
-            {loading ? (
-              <Spinner className="py-8" />
-            ) : (
-              <div className="max-h-72 overflow-y-auto space-y-3 thin-scrollbar pr-1">
-                {[...modulesMap.entries()].map(([module, perms]) => (
-                  <div key={module} className="rounded-xl border border-ink-100 overflow-hidden">
-                    <div className="flex items-center justify-between bg-ink-50 px-3 py-1.5 text-xs font-semibold text-ink-700">
-                      <span>{MODULE_LABELS[module] || module}</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => batchModuleOverride(module, 'allow')}
-                          className="text-[10px] text-emerald-700 hover:underline"
-                        >
-                          + Grant All
-                        </button>
-                        <span className="text-ink-300">·</span>
-                        <button
-                          type="button"
-                          disabled={isProtected}
-                          onClick={() => batchModuleOverride(module, 'deny')}
-                          className={`text-[10px] text-rose-700 hover:underline ${isProtected ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          - Block All
-                        </button>
-                        <span className="text-ink-300">·</span>
-                        <button
-                          type="button"
-                          onClick={() => batchModuleOverride(module, 'inherit')}
-                          className="text-[10px] text-ink-500 hover:underline"
-                        >
-                          Reset
-                        </button>
+          {showOverrides && (
+            <div className="p-3 space-y-3 bg-white">
+              <div className="flex items-center justify-between gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+                  <input
+                    className="input !py-1 !pl-8 text-xs"
+                    placeholder="Search specific action (e.g. invoices.approve, leads.delete)..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                {overrides.size > 0 && (
+                  <button type="button" onClick={() => setOverrides(new Map())} className="text-xs text-rose-600 hover:underline">
+                    Reset all overrides
+                  </button>
+                )}
+              </div>
+
+              {loading ? (
+                <Spinner className="py-6" />
+              ) : (
+                <div className="max-h-60 overflow-y-auto space-y-2.5 thin-scrollbar pr-1">
+                  {[...modulesMap.entries()].map(([module, perms]) => (
+                    <div key={module} className="rounded-lg border border-ink-100 overflow-hidden">
+                      <div className="flex items-center justify-between bg-ink-50 px-3 py-1.5 text-xs font-semibold text-ink-700">
+                        <span>{MODULE_LABELS[module] || module}</span>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => batchModuleOverride(module, 'allow')}
+                            className="text-emerald-700 hover:underline font-medium"
+                          >
+                            + Grant All
+                          </button>
+                          <span className="text-ink-300">·</span>
+                          <button
+                            type="button"
+                            disabled={isProtected}
+                            onClick={() => batchModuleOverride(module, 'deny')}
+                            className={`text-rose-700 hover:underline font-medium ${isProtected ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          >
+                            - Block All
+                          </button>
+                          <span className="text-ink-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => batchModuleOverride(module, 'inherit')}
+                            className="text-ink-500 hover:underline"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                      <div className="divide-y divide-ink-100">
+                        {perms.map((p) => {
+                          const inRole = rolePerms.has(p.key) || rolePerms.has(`${module}.manage`) || role === 'super_admin'
+                          const currentEffect = overrides.get(p.key)
+
+                          return (
+                            <div key={p.key} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+                              <div>
+                                <p className="font-mono text-ink-800 text-[11px] font-medium">{p.key}</p>
+                                <p className="text-[10px] text-ink-400">
+                                  Role: <span className={inRole ? 'text-emerald-600 font-semibold' : 'text-ink-400'}>{inRole ? 'Allowed' : 'Not Granted'}</span>
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setOverride(p.key, 'inherit')}
+                                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${!currentEffect ? 'bg-ink-100 text-ink-900 font-semibold' : 'text-ink-400 hover:bg-ink-50'}`}
+                                >
+                                  Inherit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setOverride(p.key, 'allow')}
+                                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${currentEffect === 'allow' ? 'bg-emerald-100 text-emerald-800 font-bold ring-1 ring-emerald-300' : 'text-ink-500 hover:bg-emerald-50'}`}
+                                >
+                                  + Grant
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isProtected}
+                                  onClick={() => setOverride(p.key, 'deny')}
+                                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${currentEffect === 'deny' ? 'bg-rose-100 text-rose-800 font-bold ring-1 ring-rose-300' : 'text-ink-500 hover:bg-rose-50'} ${isProtected ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                >
+                                  - Block
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                    <div className="divide-y divide-ink-100">
-                      {perms.map((p) => {
-                        const inRole = rolePerms.has(p.key) || rolePerms.has(`${module}.manage`) || role === 'super_admin'
-                        const currentEffect = overrides.get(p.key) // 'allow' | 'deny' | undefined
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-                        return (
-                          <div key={p.key} className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
-                            <div>
-                              <p className="font-mono text-ink-800 font-medium">{p.key}</p>
-                              <p className="text-[10px] text-ink-400">
-                                Role Default: <span className={inRole ? 'text-emerald-600 font-semibold' : 'text-ink-400'}>{inRole ? 'Allowed' : 'Not Granted'}</span>
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setOverride(p.key, 'inherit')}
-                                className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${!currentEffect ? 'bg-ink-100 text-ink-900 font-semibold' : 'text-ink-500 hover:bg-ink-50'}`}
-                              >
-                                Inherit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setOverride(p.key, 'allow')}
-                                className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${currentEffect === 'allow' ? 'bg-emerald-100 text-emerald-800 font-bold ring-1 ring-emerald-300' : 'text-ink-500 hover:bg-emerald-50 hover:text-emerald-700'}`}
-                              >
-                                + Grant
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isProtected}
-                                onClick={() => setOverride(p.key, 'deny')}
-                                className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${currentEffect === 'deny' ? 'bg-rose-100 text-rose-800 font-bold ring-1 ring-rose-300' : 'text-ink-500 hover:bg-rose-50 hover:text-rose-700'} ${isProtected ? 'opacity-40 cursor-not-allowed' : ''}`}
-                              >
-                                - Block
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* Live Policy Summary Sticky Ribbon */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/50 p-3 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-brand-900">Summary:</span>
+            <span className="rounded bg-white px-2 py-0.5 font-semibold text-brand-700 shadow-2xs border border-brand-200">
+              {roles.find((r) => r.key === role)?.name || role}
+            </span>
+            <span className="rounded bg-white px-2 py-0.5 font-medium text-ink-700 shadow-2xs border border-ink-200">
+              Scope: {recordScope === 'all' ? 'All Workspace' : recordScope === 'team' ? 'Team Scope' : 'Strict Own'}
+            </span>
+            <span className="rounded bg-white px-2 py-0.5 font-medium text-ink-700 shadow-2xs border border-ink-200">
+              {customModules ? `${allowedModules.size} Modules Allowed` : 'All Modules Allowed'}
+            </span>
+            <span className={`rounded px-2 py-0.5 font-medium border shadow-2xs ${exportAllowed ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+              Export: {exportAllowed ? 'Allowed' : 'Blocked'}
+            </span>
+            {overrides.size > 0 && (
+              <span className="rounded bg-violet-50 text-violet-800 px-2 py-0.5 font-medium border border-violet-200 shadow-2xs">
+                {overrides.size} PBAC Overrides
+              </span>
             )}
           </div>
-        )}
-
-        <div className="flex items-center justify-between border-t border-ink-100 pt-3">
-          <p className="text-[11px] text-ink-500">
-            Changes apply to {user.full_name || user.email} immediately upon save.
-          </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <button type="button" className="btn-ghost" disabled={saving} onClick={onClose}>
               Cancel
             </button>

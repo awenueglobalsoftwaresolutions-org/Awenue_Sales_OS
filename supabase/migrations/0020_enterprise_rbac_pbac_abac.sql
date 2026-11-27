@@ -31,91 +31,88 @@ alter table public.profiles
   add column if not exists record_scope text not null default 'all' check (record_scope in ('all', 'team', 'own')),
   add column if not exists export_allowed boolean not null default true;
 
--- ============ 4. ADVANCED PERMISSION EVALUATOR (RBAC + PBAC + ABAC) ============
-create or replace function public.has_permission_for(p_user uuid, p_key text) returns boolean
+-- ============ 4. BULLETPROOF PERMISSION EVALUATOR (RBAC + PBAC + ABAC) ============
+create or replace function public.can_do_for(p_user uuid, p_module text, p_action text) returns boolean
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_role text;
   v_active boolean;
   v_allowed_modules text[];
   v_export_allowed boolean;
-  v_module text;
-  v_action text;
-  v_user_effect text;
+  v_action_effect text;
+  v_manage_effect text;
 begin
   if p_user is null then return false; end if;
 
-  -- 1. Fetch user attributes (ABAC)
+  -- 1. Fetch user attributes
   select role, is_active, allowed_modules, export_allowed
     into v_role, v_active, v_allowed_modules, v_export_allowed
-    from public.profiles
-   where id = p_user;
+    from public.profiles where id = p_user;
 
-  if not coalesce(v_active, false) then
+  if not coalesce(v_active, false) then return false; end if;
+
+  -- Super Admin is omnipotent: full access across all operations
+  if v_role = 'super_admin' then return true; end if;
+
+  -- 2. ABAC: Module whitelist check (immediate deny if module not whitelisted)
+  if v_allowed_modules is not null and not (p_module = any(v_allowed_modules)) then
     return false;
   end if;
 
-  -- Super Admin is omnipotent: always has every permission and full control
-  if v_role = 'super_admin' then
-    return true;
-  end if;
-
-  v_module := split_part(p_key, '.', 1);
-  v_action := split_part(p_key, '.', 2);
-
-  -- 2. ABAC: Module access list
-  if v_allowed_modules is not null and not (v_module = any(v_allowed_modules)) then
+  -- 3. ABAC: Global export restriction (immediate deny if export disabled)
+  if p_action = 'export' and not coalesce(v_export_allowed, true) then
     return false;
   end if;
 
-  -- 3. ABAC: Global export restriction
-  if v_action = 'export' and not coalesce(v_export_allowed, true) then
-    return false;
-  end if;
-
-  -- 4. PBAC: User-level direct permission overrides
-  select effect into v_user_effect
+  -- 4. PBAC: Check direct action override in user_permissions
+  select effect into v_action_effect
     from public.user_permissions
-   where user_id = p_user and permission = p_key;
+   where user_id = p_user and permission = (p_module || '.' || p_action);
 
-  if v_user_effect = 'deny' then
+  -- An explicit action deny CANNOT be overridden by role or module manage!
+  if v_action_effect = 'deny' then
     return false;
-  elsif v_user_effect = 'allow' then
+  elsif v_action_effect = 'allow' then
     return true;
   end if;
 
-  -- Check module-wide manage override in user_permissions
-  select effect into v_user_effect
+  -- 5. PBAC: Check module-wide manage override in user_permissions
+  select effect into v_manage_effect
     from public.user_permissions
-   where user_id = p_user and permission = (v_module || '.manage');
+   where user_id = p_user and permission = (p_module || '.manage');
 
-  if v_user_effect = 'deny' and v_action <> 'view' then
-    null;
-  elsif v_user_effect = 'allow' then
+  if v_manage_effect = 'allow' and (p_action <> 'export' or coalesce(v_export_allowed, true)) then
     return true;
   end if;
 
-  -- 5. RBAC: Role-based permissions
+  -- 6. RBAC: Role-based permissions
+  -- If manage was explicitly denied on this user, manage cannot grant actions
   return exists (
     select 1
       from public.profiles p
       join public.roles r on r.workspace_id = p.workspace_id and r.key = p.role
       join public.role_permissions rp on rp.role_id = r.id
      where p.id = p_user
-       and (rp.permission = p_key or rp.permission = (v_module || '.manage'))
+       and (
+         rp.permission = (p_module || '.' || p_action)
+         or (
+           coalesce(v_manage_effect, 'allow') <> 'deny'
+           and (p_action <> 'export' or coalesce(v_export_allowed, true))
+           and rp.permission = (p_module || '.manage')
+         )
+       )
   );
 end $$;
 
--- Drop and replace 1-arg has_permission and 2-arg can_do without overloading ambiguity
+create or replace function public.has_permission_for(p_user uuid, p_key text) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+begin
+  return public.can_do_for(p_user, split_part(p_key, '.', 1), split_part(p_key, '.', 2));
+end $$;
+
 create or replace function public.has_permission(p_key text) returns boolean
 language sql stable security definer set search_path = public as $$
   select public.has_permission_for(auth.uid(), p_key);
-$$;
-
-create or replace function public.can_do_for(p_user uuid, p_module text, p_action text) returns boolean
-language sql stable security definer set search_path = public as $$
-  select public.has_permission_for(p_user, p_module || '.' || p_action)
-      or public.has_permission_for(p_user, p_module || '.manage');
 $$;
 
 create or replace function public.can_do(p_module text, p_action text) returns boolean
@@ -123,23 +120,19 @@ language sql stable security definer set search_path = public as $$
   select public.can_do_for(auth.uid(), p_module, p_action);
 $$;
 
--- my_permissions: returns comprehensive effective permissions array
+-- my_permissions: returns comprehensive, expanded effective permissions array evaluated by can_do_for
 create or replace function public.my_permissions() returns text[]
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_user uuid := auth.uid();
   v_role text;
   v_active boolean;
-  v_allowed_modules text[];
-  v_export_allowed boolean;
   v_result text[];
 begin
   if v_user is null then return '{}'::text[]; end if;
 
-  select role, is_active, allowed_modules, export_allowed
-    into v_role, v_active, v_allowed_modules, v_export_allowed
-    from public.profiles
-   where id = v_user;
+  select role, is_active into v_role, v_active
+    from public.profiles where id = v_user;
 
   if not coalesce(v_active, false) then return '{}'::text[]; end if;
 
@@ -150,27 +143,10 @@ begin
     return v_result;
   end if;
 
-  -- For non-super admins: combine role perms with user-level grants, subtract denies
-  with effective as (
-    select rp.permission as perm
-      from public.profiles p
-      join public.roles r on r.workspace_id = p.workspace_id and r.key = p.role
-      join public.role_permissions rp on rp.role_id = r.id
-     where p.id = v_user
-    union
-    select up.permission as perm
-      from public.user_permissions up
-     where up.user_id = v_user and up.effect = 'allow'
-    except
-    select up.permission as perm
-      from public.user_permissions up
-     where up.user_id = v_user and up.effect = 'deny'
-  )
-  select coalesce(array_agg(e.perm order by e.perm), '{}') into v_result
-    from effective e
-    join public.permissions p on p.key = e.perm
-   where (v_allowed_modules is null or p.module = any(v_allowed_modules))
-     and (v_export_allowed or p.action <> 'export');
+  -- Non-super admins: evaluate each catalog permission against the bulletproof can_do_for
+  select coalesce(array_agg(p.key order by p.key), '{}') into v_result
+    from public.permissions p
+   where public.can_do_for(v_user, p.module, p.action);
 
   return coalesce(v_result, '{}'::text[]);
 end $$;
@@ -196,8 +172,7 @@ begin
   if v_role is null then return false; end if;
   if v_role = 'super_admin' then return true; end if;
 
-  -- Check if user has manage on this module
-  v_has_manage := public.has_permission(coalesce(p_module, 'leads') || '.manage');
+  v_has_manage := public.can_do_for(v_user, coalesce(p_module, 'leads'), 'manage');
   if v_has_manage and v_scope = 'all' then
     return true;
   end if;
@@ -206,7 +181,8 @@ begin
     return (p_assigned_to = v_user or p_created_by = v_user);
   end if;
 
-  return (p_assigned_to = v_user or p_created_by = v_user or public.is_team_member(p_assigned_to));
+  -- Team scope or non-manage 'all' scope
+  return (p_assigned_to = v_user or p_created_by = v_user or public.is_team_member(p_assigned_to) or public.is_team_member(p_created_by));
 end $$;
 
 revoke all on function public.has_permission_for(uuid, text), public.can_do_for(uuid, text, text) from public, anon;
@@ -339,11 +315,124 @@ create policy projects_select on public.projects for select to authenticated usi
   and public.check_abac_scope(assigned_to, created_by, 'projects')
 );
 
+drop policy if exists projects_update on public.projects;
+create policy projects_update on public.projects for update to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('projects', 'edit'))
+  and public.check_abac_scope(assigned_to, created_by, 'projects')
+) with check (workspace_id = (select public.current_workspace_id()));
+
+drop policy if exists projects_delete on public.projects;
+create policy projects_delete on public.projects for delete to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('projects', 'delete'))
+  and public.check_abac_scope(assigned_to, created_by, 'projects')
+);
+
 drop policy if exists tickets_select on public.support_tickets;
 create policy tickets_select on public.support_tickets for select to authenticated using (
   workspace_id = (select public.current_workspace_id())
   and (select public.can_do('tickets', 'view'))
   and public.check_abac_scope(assigned_to, created_by, 'tickets')
+);
+
+drop policy if exists tickets_update on public.support_tickets;
+create policy tickets_update on public.support_tickets for update to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('tickets', 'edit'))
+  and public.check_abac_scope(assigned_to, created_by, 'tickets')
+) with check (workspace_id = (select public.current_workspace_id()));
+
+drop policy if exists tickets_delete on public.support_tickets;
+create policy tickets_delete on public.support_tickets for delete to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('tickets', 'delete'))
+  and public.check_abac_scope(assigned_to, created_by, 'tickets')
+);
+
+-- website_enquiries & website_contact_messages: drop old wide-open policies and enforce strict RBAC/ABAC
+drop policy if exists website_enquiries_select on public.website_enquiries;
+create policy website_enquiries_select on public.website_enquiries for select to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'view'))
+);
+
+drop policy if exists website_enquiries_insert on public.website_enquiries;
+create policy website_enquiries_insert on public.website_enquiries for insert to authenticated with check (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'create'))
+);
+
+drop policy if exists website_enquiries_update on public.website_enquiries;
+create policy website_enquiries_update on public.website_enquiries for update to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'edit'))
+) with check (workspace_id = (select public.current_workspace_id()));
+
+drop policy if exists website_enquiries_delete on public.website_enquiries;
+create policy website_enquiries_delete on public.website_enquiries for delete to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'delete'))
+);
+
+drop policy if exists website_contacts_select on public.website_contact_messages;
+create policy website_contacts_select on public.website_contact_messages for select to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'view'))
+);
+
+drop policy if exists website_contacts_insert on public.website_contact_messages;
+create policy website_contacts_insert on public.website_contact_messages for insert to authenticated with check (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'create'))
+);
+
+drop policy if exists website_contacts_update on public.website_contact_messages;
+create policy website_contacts_update on public.website_contact_messages for update to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'edit'))
+) with check (workspace_id = (select public.current_workspace_id()));
+
+drop policy if exists website_contacts_delete on public.website_contact_messages;
+create policy website_contacts_delete on public.website_contact_messages for delete to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('website_queries', 'delete'))
+);
+
+-- services: secure select policy
+drop policy if exists services_select on public.services;
+create policy services_select on public.services for select to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (
+    (select public.can_do('settings', 'view'))
+    or (select public.can_do('leads', 'view'))
+    or (select public.can_do('deals', 'view'))
+    or (select public.can_do('invoices', 'view'))
+    or (select public.can_do('projects', 'view'))
+  )
+);
+
+-- invoices: secure scoping
+drop policy if exists invoices_select on public.invoices;
+create policy invoices_select on public.invoices for select to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('invoices', 'view'))
+  and public.check_abac_scope(created_by, created_by, 'invoices')
+);
+
+drop policy if exists invoices_update on public.invoices;
+create policy invoices_update on public.invoices for update to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and (select public.can_do('invoices', 'edit'))
+  and public.check_abac_scope(created_by, created_by, 'invoices')
+) with check (workspace_id = (select public.current_workspace_id()));
+
+drop policy if exists invoices_delete on public.invoices;
+create policy invoices_delete on public.invoices for delete to authenticated using (
+  workspace_id = (select public.current_workspace_id())
+  and status = 'draft'
+  and (select public.can_do('invoices', 'delete'))
+  and public.check_abac_scope(created_by, created_by, 'invoices')
 );
 
 -- ============ 7. PROFILES ABAC INTEGRITY GUARD ============

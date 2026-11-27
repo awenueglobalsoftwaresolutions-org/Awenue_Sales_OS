@@ -50,7 +50,7 @@ export default function App() {
             <Route path="leads" element={guarded('leads.view', <LeadsPage />)} />
             <Route path="leads/:id" element={guarded('leads.view', <LeadDetail />)} />
             <Route path="website-leads" element={<Navigate to="/leads" replace />} />
-            <Route path="website-queries" element={guarded('leads.view', <WebsiteQueriesPage />)} />
+            <Route path="website-queries" element={guarded('website_queries.view', <WebsiteQueriesPage />)} />
             <Route path="deals" element={guarded('deals.view', <DealsPage />)} />
             <Route path="deals/:id" element={guarded('deals.view', <DealDetail />)} />
             <Route path="pipeline" element={guarded('deals.view', <PipelinePage />)} />

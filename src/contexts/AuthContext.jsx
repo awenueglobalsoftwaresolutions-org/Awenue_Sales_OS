@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
     // 1. Super Admin is omnipotent: always has full system clearance.
     // 2. ABAC: Module restriction: if profile.allowed_modules is configured, module MUST be allowed.
     // 3. ABAC: Export restriction: if action is export and profile.export_allowed is false, blocked.
-    // 4. PBAC & RBAC: checks effective permissions loaded from the database engine.
+    // 4. PBAC & RBAC: checks effective permissions loaded directly from database can_do_for evaluator.
     can: (key) => {
       if (profile?.role === 'super_admin') return true
       const [module, action] = key.split('.')
@@ -83,7 +83,7 @@ export function AuthProvider({ children }) {
         if (!profile.allowed_modules.includes(module)) return false
       }
       if (action === 'export' && profile?.export_allowed === false) return false
-      return permissions.has(key) || permissions.has(`${module}.manage`)
+      return permissions.has(key)
     },
     has: (key) => {
       if (profile?.role === 'super_admin') return true
@@ -107,11 +107,11 @@ export function AuthProvider({ children }) {
       if (profile?.allowed_modules && Array.isArray(profile.allowed_modules) && profile.allowed_modules.length > 0) {
         if (!profile.allowed_modules.includes(module)) return false
       }
-      return permissions.has(`${module}.export`) || permissions.has(`${module}.manage`)
+      return permissions.has(`${module}.export`)
     },
     recordScope: profile?.record_scope || 'all',
     isSuperAdmin: profile?.role === 'super_admin',
-    isAdmin: profile?.role === 'super_admin' || permissions.has('settings.manage'),
+    isAdmin: profile?.role === 'super_admin' || permissions.has('settings.manage') || permissions.has('roles.manage'),
     // Signing in through the server records every attempt (with IP and device) and throttles repeated failures.
     // If the server can't be reached at all, fall back to a direct sign-in so people aren't locked out.
     signIn: async (email, password) => {
