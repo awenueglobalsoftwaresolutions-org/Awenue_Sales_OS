@@ -22,7 +22,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog'
 import { Field, FormError, FormFooter } from '../../components/forms/FormParts'
 import InvoiceForm from './InvoiceForm'
 import RecordEmails from '../../components/email/RecordEmails'
-import { invoiceEmailDefaults } from '../../lib/emailTemplate'
+import { INVOICE_TEMPLATES, INVOICE_BILLING_TEMPLATE, buildContext, renderEmail, invoiceEmailDefaults } from '../../lib/emailTemplate'
 
 const STATUS_TONE = { draft: 'gray', sent: 'blue', partially_paid: 'amber', paid: 'green', overdue: 'red', cancelled: 'gray' }
 const EMAIL_STATUS_TONE = {
@@ -90,6 +90,10 @@ export default function InvoiceDetail() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
   const [targetEmail, setTargetEmail] = useState('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState(INVOICE_BILLING_TEMPLATE.id)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [showBodyEditor, setShowBodyEditor] = useState(false)
 
   if (inv.loading && !inv.data) return <Spinner className="py-20" />
   if (inv.error) return <ErrorState message={inv.error} onRetry={inv.reload} />
@@ -119,7 +123,21 @@ export default function InvoiceDetail() {
 
   const openSendConfirm = () => {
     setTargetEmail(d.bill_to_email || d.contact?.email || d.organization?.email || '')
+    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === selectedTemplateId) || INVOICE_BILLING_TEMPLATE
+    const ctx = buildContext({ invoice: d, organization: d.organization, contact: d.contact })
+    const rendered = renderEmail(tmpl.subject, tmpl.body, ctx)
+    setEmailSubject(rendered.subject)
+    setEmailBody(rendered.body)
     setConfirmModalOpen(true)
+  }
+
+  const handleSelectTemplate = (tmplId) => {
+    setSelectedTemplateId(tmplId)
+    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === tmplId) || INVOICE_BILLING_TEMPLATE
+    const ctx = buildContext({ invoice: d, organization: d.organization, contact: d.contact })
+    const rendered = renderEmail(tmpl.subject, tmpl.body, ctx)
+    setEmailSubject(rendered.subject)
+    setEmailBody(rendered.body)
   }
 
   const executeSendInvoiceEmail = async () => {
@@ -145,6 +163,10 @@ export default function InvoiceDetail() {
         pdfBase64,
         items: d.items,
         force: true,
+        templateStyle: selectedTemplateId === 'detailed-invoice-sheet' ? 'invoice_document' : 'clean_letter',
+        customSubject: emailSubject,
+        customBody: emailBody,
+        dealTitle: d.deal?.title,
       })
 
       toast.success(`Invoice #${d.invoice_number} successfully emailed to ${to}!`, { id: toastId })
@@ -394,12 +416,36 @@ export default function InvoiceDetail() {
       <ConfirmDialog open={deleting} title="Delete draft invoice?" message={`${d.invoice_number} will be permanently deleted.`} confirmLabel="Delete"
         onConfirm={async () => { await deleteInvoice(id); toast.success('Invoice deleted'); navigate('/invoices', { replace: true }) }} onClose={() => setDeleting(false)} />
       
-      {/* Complete Confirmation Dialog Required by Section 2 */}
-      <Modal open={confirmModalOpen} title={hasBeenSentViaEmail ? 'Resend Invoice Email' : 'Send Invoice by Email'} onClose={() => !sendingEmail && setConfirmModalOpen(false)} size="md">
+      {/* Complete Confirmation Dialog Required by Section 2 & User Request */}
+      <Modal open={confirmModalOpen} title={hasBeenSentViaEmail ? 'Resend Invoice Email' : 'Send Invoice by Email'} onClose={() => !sendingEmail && setConfirmModalOpen(false)} size="lg">
         <div className="space-y-4">
           <p className="text-sm text-ink-600">
-            Please verify the billing invoice details before dispatching to the client. The official generated PDF will be attached.
+            Please select your email template and verify invoice details before dispatching to the client. The official generated PDF will be attached.
           </p>
+
+          {/* Template Selector */}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900">
+              Select Email Template
+            </label>
+            <select
+              className="input !bg-white !border-emerald-300 font-medium text-ink-900"
+              value={selectedTemplateId}
+              onChange={(e) => handleSelectTemplate(e.target.value)}
+              disabled={sendingEmail}
+            >
+              {INVOICE_TEMPLATES.map((tmpl) => (
+                <option key={tmpl.id} value={tmpl.id}>
+                  {tmpl.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-emerald-800">
+              {selectedTemplateId === 'awenue-billing-notice'
+                ? '✓ Clean and clear letter with AWENUE official logo, concise summary, and PDF attached.'
+                : '✓ Full table itemization breakdown with bank payment details and PDF attached.'}
+            </p>
+          </div>
 
           <div className="rounded-lg border border-ink-150 bg-ink-50/50 p-4 space-y-2 text-sm">
             <div className="flex justify-between py-0.5">
@@ -420,11 +466,11 @@ export default function InvoiceDetail() {
             </div>
             <div className="flex justify-between py-0.5">
               <span className="text-ink-500 text-xs">Official Sender:</span>
-              <span className="text-xs text-ink-600">AWENUE Billing Department &lt;billing@awenueglobalsoftwaresolutions.in&gt;</span>
+              <span className="text-xs text-ink-600 font-medium">AWENUE Billing Department &lt;billing@awenueglobalsoftwaresolutions.in&gt;</span>
             </div>
             <div className="flex justify-between py-0.5">
               <span className="text-ink-500 text-xs">Attachment:</span>
-              <span className="text-xs font-medium text-emerald-800 flex items-center gap-1">
+              <span className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
                 📎 Invoice-{d.invoice_number}.pdf
               </span>
             </div>
@@ -441,6 +487,43 @@ export default function InvoiceDetail() {
               autoFocus
             />
           </Field>
+
+          {/* Email Subject Field */}
+          <Field label="Email Subject" required>
+            <input
+              type="text"
+              className="input font-medium"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              disabled={sendingEmail}
+            />
+          </Field>
+
+          {/* Message Preview & Customization Accordion */}
+          <div className="rounded-lg border border-ink-150 overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 bg-ink-50 hover:bg-ink-100 text-xs font-medium text-ink-700 transition-colors"
+              onClick={() => setShowBodyEditor(!showBodyEditor)}
+            >
+              <span>{showBodyEditor ? 'Hide Message Preview' : 'Show Message Preview & Content'}</span>
+              <span className="text-ink-500">{showBodyEditor ? '▲' : '▼'}</span>
+            </button>
+            {showBodyEditor && (
+              <div className="p-3 bg-white space-y-2">
+                <textarea
+                  rows={8}
+                  className="input font-mono text-xs leading-relaxed"
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  disabled={sendingEmail}
+                />
+                <p className="text-[11px] text-ink-400">
+                  Tip: You can customize the message text before sending, or leave as default.
+                </p>
+              </div>
+            )}
+          </div>
 
           {hasBeenSentViaEmail && (
             <div className="rounded-lg bg-sky-50 p-3 text-xs text-sky-800 border border-sky-100 flex items-start gap-2">

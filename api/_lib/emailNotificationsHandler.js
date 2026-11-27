@@ -109,6 +109,7 @@ export async function handleSendInvoiceEmail(req, res, env, pathInvoiceId = null
 
   const rendered = renderInvoiceGeneratedEmail({
     clientName: inv.bill_to_name || 'Valued Client',
+    dealTitle: body.deal_title || body.dealTitle || inv.deal?.title,
     invoiceNumber: inv.invoice_number,
     invoiceDate: inv.issue_date,
     dueDate: inv.due_date,
@@ -133,6 +134,9 @@ export async function handleSendInvoiceEmail(req, res, env, pathInvoiceId = null
       tax_id: inv.bill_to_tax_id,
     },
     items: inv.items || body.items || [],
+    templateStyle: body.template_style || body.templateStyle || 'clean_letter',
+    customSubject: body.custom_subject || body.customSubject || body.subject,
+    customBody: body.custom_body || body.customBody || body.body,
   })
 
   const attachments = []

@@ -767,7 +767,14 @@ export function renderInvoiceGeneratedEmail(data) {
     items = [],
   } = data
 
-  const subjectLine = data.subject || `Invoice #${invoiceNumber} from AWENUE Global Software Solutions`
+  const templateStyle = data.templateStyle || data.template_style || 'clean_letter'
+  const customSubject = data.customSubject || data.custom_subject
+  const customBody = data.customBody || data.custom_body
+  const dealTitle = data.dealTitle || data.deal?.title
+
+  const subjectLine = customSubject || data.subject || (dealTitle
+    ? `Invoice #${invoiceNumber} for ${dealTitle} from AWENUE Global Software Solutions`
+    : `Invoice #${invoiceNumber} from AWENUE Global Software Solutions`)
   const previewText = `Invoice #${invoiceNumber} from AWENUE Global Software Solutions for ${currency} ${Number(amount).toLocaleString()}`
 
   // Issuer (From) details
@@ -788,6 +795,148 @@ export function renderInvoiceGeneratedEmail(data) {
 
   const formattedInvoiceDate = formatOrdinalDate(invoiceDate)
   const formattedDueDate = dueDate ? formatOrdinalDate(dueDate) : 'Due upon receipt'
+
+  // If clean letter template requested (the default clean & clear format with only logo)
+  if (templateStyle !== 'invoice_document') {
+    let bodyHtml = ''
+    if (customBody) {
+      bodyHtml = escapeHtml(customBody)
+        .split('\n\n')
+        .map((p) => `<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">${p.replace(/\n/g, '<br/>')}</p>`)
+        .join('')
+    } else {
+      bodyHtml = `
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #1e293b;">Dear ${escapeHtml(billToName)},</p>
+        <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          Greetings from <strong>AWENUE Global Software Solutions</strong>!<br/>
+          We hope you are doing well.
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          Please find attached the invoice for <strong>${escapeHtml(dealTitle || 'Professional Software Services')}</strong>, issued by AWENUE Global Software Solutions.
+        </p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 24px; margin: 24px 0;">
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+            Invoice Details
+          </div>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #64748b; width: 42%;">Invoice Number:</td>
+              <td style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace;">#${escapeHtml(invoiceNumber)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Total Amount:</td>
+              <td style="padding: 6px 0; font-size: 15px; font-weight: 800; color: #059669;">${formatCurrency(amount, currency)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #64748b;">Payment Due Date:</td>
+              <td style="padding: 6px 0; font-size: 13px; font-weight: 600; color: #b91c1c;">${escapeHtml(formattedDueDate)}</td>
+            </tr>
+            ${paymentInstructions ? `
+            <tr>
+              <td style="padding: 8px 0 4px 0; font-size: 13px; color: #64748b; vertical-align: top;">Payment Instructions:</td>
+              <td style="padding: 8px 0 4px 0; font-size: 13px; color: #0f172a; vertical-align: top;">${escapeHtml(paymentInstructions)}</td>
+            </tr>` : ''}
+          </table>
+        </div>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          We kindly request you to review the attached invoice and arrange the payment on or before the specified due date.
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          Should you have any questions, require clarification regarding the invoice, or need any assistance with the payment process, please feel free to contact our Billing Department at <a href="mailto:${companyEmail}" style="color: #059669; font-weight: 600; text-decoration: none;">${companyEmail}</a>.
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          We sincerely appreciate your trust in <strong>AWENUE Global Software Solutions</strong> and value the opportunity to work with you. We look forward to building a long-term and successful business relationship.
+        </p>
+        <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #334155;">
+          Thank you for choosing AWENUE Global Software Solutions.
+        </p>
+        <div style="margin: 28px 0; font-size: 14px; line-height: 1.6; color: #1e293b;">
+          <strong>Warm Regards,</strong><br/>
+          Billing Department<br/>
+          <strong>AWENUE Global Software Solutions</strong><br/>
+          Email: <a href="mailto:${companyEmail}" style="color: #059669; text-decoration: none;">${companyEmail}</a><br/>
+          Website: <a href="https://${companyWebsite}/" target="_blank" style="color: #059669; text-decoration: none;">https://${companyWebsite}/</a>
+        </div>
+        <div style="margin-top: 24px; padding: 12px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #166534;">
+          📎 Please find your invoice attached to this email for your reference and records.
+        </div>
+      `
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>${escapeHtml(subjectLine)}</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 24px 16px; width: 100% !important; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 36px 32px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); }
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; padding: 24px 18px !important; border-radius: 0 !important; border: none !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 24px 16px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
+  <div style="display: none; font-size: 1px; color: #f8fafc; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+    ${escapeHtml(previewText)}
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+  </div>
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 36px 32px; text-align: left;">
+          <tr>
+            <td>
+              <!-- Clean AWENUE Logo Only Header -->
+              <div style="margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9;">
+                <img src="${logoUrl}" alt="AWENUE Global Software Solutions" height="46" style="display: block; max-height: 46px; width: auto; border: 0;" />
+              </div>
+
+              ${bodyHtml}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+    const text = customBody || `Dear ${billToName},
+
+Greetings from AWENUE Global Software Solutions!
+We hope you are doing well.
+
+Please find attached the invoice for ${dealTitle || 'Professional Software Services'}, issued by AWENUE Global Software Solutions.
+
+Invoice Details
+Invoice Number: #${invoiceNumber}
+Total Amount: ${formatCurrency(amount, currency)}
+Payment Due Date: ${formattedDueDate}
+${paymentInstructions ? `Payment Instructions: ${paymentInstructions}\n` : ''}
+We kindly request you to review the attached invoice and arrange the payment on or before the specified due date.
+
+Should you have any questions, require clarification regarding the invoice, or need any assistance with the payment process, please feel free to contact our Billing Department at ${companyEmail}.
+
+We sincerely appreciate your trust in AWENUE Global Software Solutions and value the opportunity to work with you. We look forward to building a long-term and successful business relationship.
+
+Thank you for choosing AWENUE Global Software Solutions.
+
+Warm Regards,
+Billing Department
+AWENUE Global Software Solutions
+Email: ${companyEmail}
+Website: https://${companyWebsite}/
+
+Please find your invoice attached to this email for your reference and records.`
+
+    return { subject: subjectLine, html, text }
+  }
 
   // Normalize line items
   const rawItems = Array.isArray(items) && items.length > 0 ? items : [
