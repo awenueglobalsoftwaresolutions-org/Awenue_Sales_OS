@@ -34,10 +34,78 @@ export const updateService = (id, patch) => mustAffect(supabase.from('services')
 export const setServiceActive = (id, is_active) => mustAffect(supabase.from('services').update({ is_active }).eq('id', id))
 
 // ---- users ----
-export const listUsers = () => rows(supabase.from('profiles').select('id,full_name,email,role,is_active,created_at,avatar_url,job_title,department,phone,manager_id,is_permanent').order('created_at'))
+export const listUsers = async () => {
+  const res = await supabase.from('profiles').select('id,full_name,email,role,is_active,created_at,avatar_url,job_title,department,phone,manager_id,is_permanent,allowed_modules,allowed_services,record_scope,export_allowed').order('created_at')
+  if (res.error) {
+    if (res.error.message?.includes('allowed_modules') || res.error.code === '42703' || res.error.message?.includes('does not exist')) {
+      const fallback = await supabase.from('profiles').select('id,full_name,email,role,is_active,created_at,avatar_url,job_title,department,phone,manager_id,is_permanent').order('created_at')
+      if (fallback.error) throw fallback.error
+      return (fallback.data || []).map((u) => ({
+        ...u,
+        allowed_modules: null,
+        record_scope: 'all',
+        export_allowed: true,
+      }))
+    }
+    throw res.error
+  }
+  return res.data
+}
 export const updateUser = (id, patch) => mustAffect(supabase.from('profiles').update(patch).eq('id', id))
 export const createUser = (payload) => apiPost('/users/create', payload)
 export const removeUser = (userId) => apiPost('/users/remove', { userId })
+
+// ---- PBAC: User-level permission overrides ----
+export const listUserPermissions = async (userId) => {
+  const { data, error } = await supabase.from('user_permissions').select('permission,effect,created_at').eq('user_id', userId)
+  if (error) {
+    console.warn('user_permissions table not yet created or not accessible on remote database:', error.message)
+    return []
+  }
+  return data || []
+}
+
+export async function saveUserPermissions(userId, overrides = [], grantedBy = null) {
+  try {
+    await supabase.from('user_permissions').delete().eq('user_id', userId).then(ok)
+    if (overrides.length > 0) {
+      const payload = overrides.map(({ permission, effect }) => ({
+        user_id: userId,
+        permission,
+        effect,
+        granted_by: grantedBy || undefined,
+      }))
+      await supabase.from('user_permissions').insert(payload).then(ok)
+    }
+  } catch (err) {
+    if (err?.message?.includes('user_permissions') || err?.message?.includes('does not exist')) {
+      console.warn('user_permissions table not yet created in Supabase SQL editor:', err.message)
+      return
+    }
+    throw err
+  }
+}
+
+// ---- ABAC: User access control policy ----
+export async function updateUserAccessControl(userId, { role, manager_id, record_scope, allowed_modules, export_allowed, allowed_services }) {
+  const patch = clean({
+    role,
+    manager_id: manager_id || null,
+    record_scope: record_scope || 'all',
+    allowed_modules: allowed_modules && allowed_modules.length > 0 ? allowed_modules : null,
+    export_allowed: export_allowed !== false,
+    allowed_services: allowed_services && allowed_services.length > 0 ? allowed_services : null,
+  })
+  try {
+    return await updateUser(userId, patch)
+  } catch (err) {
+    if (err?.message?.includes('allowed_modules') || err?.message?.includes('does not exist')) {
+      // If columns not yet created in remote database, fall back to updating standard fields
+      return await updateUser(userId, clean({ role, manager_id: manager_id || null }))
+    }
+    throw err
+  }
+}
 
 // ---- roles & permissions ----
 export const listRoles = () => rows(supabase.from('roles').select('*').order('created_at'))

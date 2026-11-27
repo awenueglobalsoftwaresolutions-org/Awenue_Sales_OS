@@ -141,58 +141,68 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 2. Key Performance Indicators (5 consolidated high-signal cards) */}
-      <section className="space-y-3" aria-label="Key metrics">
-        <SectionHeading title="Key Metrics" subtitle="Live totals across leads, deals, revenue, and tasks" />
-        <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
-          <StatTile
-            icon={Users}
-            label="Total leads"
-            value={s.total_leads}
-            sub={`${s.new_leads_month} new · ${s.qualified_leads} qualified`}
-            to="/leads"
-            tone="brand"
-          />
-          <StatTile
-            icon={Handshake}
-            label="Active deals"
-            value={s.active_deals}
-            sub={`${s.won_deals} won · ${s.lost_deals} lost`}
-            to="/pipeline"
-            tone="amber"
-          />
-          <StatTile
-            icon={TrendingUp}
-            label="Pipeline value"
-            value={money(s.pipeline_value)}
-            sub={winRate !== null ? `${winRate}% deal win rate` : 'Open deal value'}
-            to="/pipeline"
-            tone="sky"
-          />
-          <StatTile
-            icon={Wallet}
-            label="Closed revenue"
-            value={money(s.closed_revenue)}
-            sub={`${s.won_deals} closed-won deals`}
-            to="/deals"
-            tone="emerald"
-          />
-          <div className="col-span-2 sm:col-span-1">
-            <StatTile
-              icon={CalendarClock}
-              label="Follow-ups (7 days)"
-              value={s.upcoming_followups}
-              sub={s.overdue_tasks > 0 ? `${s.overdue_tasks} overdue tasks` : '0 overdue tasks'}
-              to="/tasks"
-              tone="violet"
-              danger={s.overdue_tasks > 0}
-            />
+      {/* 2. Key Performance Indicators (consolidated high-signal cards) */}
+      {(can('leads.view') || can('deals.view') || can('tasks.view')) && (
+        <section className="space-y-3" aria-label="Key metrics">
+          <SectionHeading title="Key Metrics" subtitle="Live totals across authorized modules" />
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
+            {can('leads.view') && (
+              <StatTile
+                icon={Users}
+                label="Total leads"
+                value={s.total_leads}
+                sub={`${s.new_leads_month} new · ${s.qualified_leads} qualified`}
+                to="/leads"
+                tone="brand"
+              />
+            )}
+            {can('deals.view') && (
+              <>
+                <StatTile
+                  icon={Handshake}
+                  label="Active deals"
+                  value={s.active_deals}
+                  sub={`${s.won_deals} won · ${s.lost_deals} lost`}
+                  to="/pipeline"
+                  tone="amber"
+                />
+                <StatTile
+                  icon={TrendingUp}
+                  label="Pipeline value"
+                  value={money(s.pipeline_value)}
+                  sub={winRate !== null ? `${winRate}% deal win rate` : 'Open deal value'}
+                  to="/pipeline"
+                  tone="sky"
+                />
+                <StatTile
+                  icon={Wallet}
+                  label="Closed revenue"
+                  value={money(s.closed_revenue)}
+                  sub={`${s.won_deals} closed-won deals`}
+                  to="/deals"
+                  tone="emerald"
+                />
+              </>
+            )}
+            {can('tasks.view') && (
+              <div className="col-span-2 sm:col-span-1">
+                <StatTile
+                  icon={CalendarClock}
+                  label="Follow-ups (7 days)"
+                  value={s.upcoming_followups}
+                  sub={s.overdue_tasks > 0 ? `${s.overdue_tasks} overdue tasks` : '0 overdue tasks'}
+                  to="/tasks"
+                  tone="violet"
+                  danger={s.overdue_tasks > 0}
+                />
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 3. Lead Stage Funnel Strip */}
-      {leadBreakdown.data && leadBreakdown.data.total > 0 && (
+      {can('leads.view') && leadBreakdown.data && leadBreakdown.data.total > 0 && (
         <section className="surface-card p-4 sm:p-5" aria-label="Lead stage breakdown">
           <div className="mb-3.5 flex items-center justify-between gap-2">
             <div>
@@ -232,12 +242,14 @@ export default function Dashboard() {
       )}
 
       {/* 4. Analytics & Charts */}
-      <section className="space-y-3" aria-label="Analytics">
-        <SectionHeading title="Analytics & Conversion" subtitle="Trends, lead sources, win rate, and stage distribution" />
-        <Suspense fallback={<Spinner label="Loading charts" className="py-16" />}>
-          <DashboardCharts stats={s} leadBreakdown={leadBreakdown.data} />
-        </Suspense>
-      </section>
+      {(can('leads.view') || can('deals.view')) && (
+        <section className="space-y-3" aria-label="Analytics">
+          <SectionHeading title="Analytics & Conversion" subtitle="Trends, lead sources, win rate, and stage distribution" />
+          <Suspense fallback={<Spinner label="Loading charts" className="py-16" />}>
+            <DashboardCharts stats={s} leadBreakdown={leadBreakdown.data} />
+          </Suspense>
+        </section>
+      )}
 
       {/* 5. Today's Workspace (3 columns in one row) */}
       {(can('tickets.view') || can('projects.view')) && (
@@ -268,28 +280,31 @@ export default function Dashboard() {
         </section>
       )}
 
-      <section className="space-y-3" aria-label="Workspace activity">
-        <SectionHeading title="Today's Workspace" subtitle="Recent leads, upcoming tasks, and live team activity" />
-        <div className="grid gap-4 lg:gap-5 lg:grid-cols-3">
-          <ListCard title="Recent leads" icon={UserPlus} iconTone="brand" to="/leads" state={leads} empty="No leads yet.">
-            {(l) => (
-              <li key={l.id} className="flex items-center justify-between gap-2.5 py-2.5">
-                <Link to={l.isWebsiteLead ? '/leads' : `/leads/${l.id}`} className="group flex min-w-0 flex-1 items-center gap-2.5">
-                  <Avatar person={{ full_name: fullName(l) }} size={28} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink-900 group-hover:text-brand-700 group-hover:underline">{fullName(l)}</p>
-                    <p className="truncate text-xs text-ink-500">
-                      {l.isWebsiteLead ? (l.lead_number || 'WEB') : leadCode(l.lead_number)}
-                      {l.organization?.name ? ` · ${l.organization.name}` : ''}
-                    </p>
-                  </div>
-                </Link>
-                {l.isWebsiteLead
-                  ? <Badge tone={WEBSITE_STATUS_TONE[l.websiteStatus] || 'gray'}>{formatWebsiteStatus(l.websiteStatus)}</Badge>
-                  : <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>}
-              </li>
+      {(can('leads.view') || can('tasks.view') || can('activities.view')) && (
+        <section className="space-y-3" aria-label="Workspace activity">
+          <SectionHeading title="Today's Workspace" subtitle="Recent leads, upcoming tasks, and live team activity" />
+          <div className="grid gap-4 lg:gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {can('leads.view') && (
+              <ListCard title="Recent leads" icon={UserPlus} iconTone="brand" to="/leads" state={leads} empty="No leads yet.">
+                {(l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-2.5 py-2.5">
+                    <Link to={l.isWebsiteLead ? '/leads' : `/leads/${l.id}`} className="group flex min-w-0 flex-1 items-center gap-2.5">
+                      <Avatar person={{ full_name: fullName(l) }} size={28} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-ink-900 group-hover:text-brand-700 group-hover:underline">{fullName(l)}</p>
+                        <p className="truncate text-xs text-ink-500">
+                          {l.isWebsiteLead ? (l.lead_number || 'WEB') : leadCode(l.lead_number)}
+                          {l.organization?.name ? ` · ${l.organization.name}` : ''}
+                        </p>
+                      </div>
+                    </Link>
+                    {l.isWebsiteLead
+                      ? <Badge tone={WEBSITE_STATUS_TONE[l.websiteStatus] || 'gray'}>{formatWebsiteStatus(l.websiteStatus)}</Badge>
+                      : <Badge tone={STATUS_TONE[l.status]}>{labelOf(LEAD_STATUSES, l.status)}</Badge>}
+                  </li>
+                )}
+              </ListCard>
             )}
-          </ListCard>
 
           <ListCard title="Upcoming tasks" icon={CheckCircle2} iconTone="amber" to="/tasks" state={tasks} empty="No open tasks with a due date.">
             {(t) => {
@@ -356,6 +371,7 @@ export default function Dashboard() {
           </section>
         </div>
       </section>
-    </div>
+    )}
+  </div>
   )
 }

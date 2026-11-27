@@ -48,19 +48,20 @@ function Dropdown({ button, children, className = 'w-60' }) {
 }
 
 const QUICK_ADD = [
-  { label: 'Lead', to: '/leads', icon: UserPlus, tone: 'text-blue-600 bg-blue-50 ring-blue-200/70' },
-  { label: 'Deal', to: '/deals', icon: Handshake, tone: 'text-amber-600 bg-amber-50 ring-amber-200/70' },
-  { label: 'Task', to: '/tasks', icon: CheckSquare, tone: 'text-violet-600 bg-violet-50 ring-violet-200/70' },
-  { label: 'Contact', to: '/contacts', icon: Contact, tone: 'text-emerald-600 bg-emerald-50 ring-emerald-200/70' },
-  { label: 'Organization', to: '/organizations', icon: Building2, tone: 'text-indigo-600 bg-indigo-50 ring-indigo-200/70' },
-  { label: 'Invoice', to: '/invoices', icon: Receipt, tone: 'text-sky-600 bg-sky-50 ring-sky-200/70' },
+  { perm: 'leads.create', label: 'Lead', to: '/leads', icon: UserPlus, tone: 'text-blue-600 bg-blue-50 ring-blue-200/70' },
+  { perm: 'deals.create', label: 'Deal', to: '/deals', icon: Handshake, tone: 'text-amber-600 bg-amber-50 ring-amber-200/70' },
+  { perm: 'tasks.create', label: 'Task', to: '/tasks', icon: CheckSquare, tone: 'text-violet-600 bg-violet-50 ring-violet-200/70' },
+  { perm: 'contacts.create', label: 'Contact', to: '/contacts', icon: Contact, tone: 'text-emerald-600 bg-emerald-50 ring-emerald-200/70' },
+  { perm: 'organizations.create', label: 'Organization', to: '/organizations', icon: Building2, tone: 'text-indigo-600 bg-indigo-50 ring-indigo-200/70' },
+  { perm: 'invoices.create', label: 'Invoice', to: '/invoices', icon: Receipt, tone: 'text-sky-600 bg-sky-50 ring-sky-200/70' },
 ]
 
 export default function Topbar({ onOpenMobile }) {
-  const { profile, user, signOut } = useAuth()
+  const { profile, user, signOut, can } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const name = profile?.full_name || user?.email || 'You'
+  const visibleQuickAdd = useMemo(() => QUICK_ADD.filter((item) => !item.perm || can(item.perm)), [can])
 
   const currentContext = useMemo(() => {
     const path = location.pathname
@@ -144,38 +145,40 @@ export default function Topbar({ onOpenMobile }) {
         </span>
 
         {/* Quick Add Menu */}
-        <Dropdown
-          className="w-64"
-          button={(toggle) => (
-            <button
-              onClick={toggle}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs ring-1 ring-brand-700/20 transition duration-150 hover:bg-brand-700 hover:shadow active:scale-[0.98] sm:px-3.5"
-            >
-              <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">Quick add</span>
-            </button>
-          )}
-        >
-          <div className="mb-1 flex items-center justify-between border-b border-ink-100 px-3 py-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">Quick create</p>
-            <span className="text-[10px] font-medium text-ink-400">Record</span>
-          </div>
-          <div className="space-y-0.5">
-            {QUICK_ADD.map(({ label, to, icon: Icon, tone }) => (
+        {visibleQuickAdd.length > 0 && (
+          <Dropdown
+            className="w-64"
+            button={(toggle) => (
               <button
-                key={to}
-                role="menuitem"
-                onClick={() => navigate(`${to}?new=1`)}
-                className="group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-medium text-ink-700 transition duration-150 hover:bg-ink-50 hover:text-ink-900"
+                onClick={toggle}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs ring-1 ring-brand-700/20 transition duration-150 hover:bg-brand-700 hover:shadow active:scale-[0.98] sm:px-3.5"
               >
-                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ring-1 transition group-hover:scale-105 ${tone}`}>
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
-                </span>
-                <span className="flex-1 font-semibold text-ink-800">New {label}</span>
+                <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">Quick add</span>
               </button>
-            ))}
-          </div>
-        </Dropdown>
+            )}
+          >
+            <div className="mb-1 flex items-center justify-between border-b border-ink-100 px-3 py-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">Quick create</p>
+              <span className="text-[10px] font-medium text-ink-400">Record</span>
+            </div>
+            <div className="space-y-0.5">
+              {visibleQuickAdd.map(({ label, to, icon: Icon, tone }) => (
+                <button
+                  key={to}
+                  role="menuitem"
+                  onClick={() => navigate(`${to}?new=1`)}
+                  className="group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-medium text-ink-700 transition duration-150 hover:bg-ink-50 hover:text-ink-900"
+                >
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ring-1 transition group-hover:scale-105 ${tone}`}>
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                  <span className="flex-1 font-semibold text-ink-800">New {label}</span>
+                </button>
+              ))}
+            </div>
+          </Dropdown>
+        )}
 
         <NotificationBell />
 
