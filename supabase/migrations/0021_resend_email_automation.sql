@@ -1,6 +1,6 @@
 -- Resend Email Automation & Mailing System: Notification logs, delivery tracking, and sender separation.
 
-create table public.email_notification_logs (
+create table if not exists public.email_notification_logs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   event_type text not null check (event_type in (
@@ -29,19 +29,21 @@ create table public.email_notification_logs (
   updated_at timestamptz not null default now()
 );
 
-create index email_notification_logs_workspace_idx on public.email_notification_logs (workspace_id, created_at desc);
-create index email_notification_logs_status_idx on public.email_notification_logs (status);
-create index email_notification_logs_sender_type_idx on public.email_notification_logs (sender_type);
-create index email_notification_logs_resend_id_idx on public.email_notification_logs (resend_email_id);
-create index email_notification_logs_ticket_idx on public.email_notification_logs (related_ticket_id);
-create index email_notification_logs_invoice_idx on public.email_notification_logs (related_invoice_id);
-create index email_notification_logs_idempotency_idx on public.email_notification_logs (idempotency_key);
+create index if not exists email_notification_logs_workspace_idx on public.email_notification_logs (workspace_id, created_at desc);
+create index if not exists email_notification_logs_status_idx on public.email_notification_logs (status);
+create index if not exists email_notification_logs_sender_type_idx on public.email_notification_logs (sender_type);
+create index if not exists email_notification_logs_resend_id_idx on public.email_notification_logs (resend_email_id);
+create index if not exists email_notification_logs_ticket_idx on public.email_notification_logs (related_ticket_id);
+create index if not exists email_notification_logs_invoice_idx on public.email_notification_logs (related_invoice_id);
+create index if not exists email_notification_logs_idempotency_idx on public.email_notification_logs (idempotency_key);
 
+drop trigger if exists set_updated_at on public.email_notification_logs;
 create trigger set_updated_at before update on public.email_notification_logs for each row execute function public.set_updated_at();
 
 alter table public.email_notification_logs enable row level security;
 
 -- Visibility: Workspace members with communications.view, reports.view, or communications.manage, or owners of the linked ticket/invoice
+drop policy if exists email_notification_logs_select on public.email_notification_logs;
 create policy email_notification_logs_select on public.email_notification_logs for select to authenticated using (
   workspace_id = (select public.current_workspace_id())
   and (
@@ -59,6 +61,7 @@ create policy email_notification_logs_select on public.email_notification_logs f
 );
 
 -- Insert: allowed for authenticated users initiating operations or service role
+drop policy if exists email_notification_logs_insert on public.email_notification_logs;
 create policy email_notification_logs_insert on public.email_notification_logs for insert to authenticated with check (
   workspace_id = (select public.current_workspace_id())
   and (
@@ -71,6 +74,7 @@ create policy email_notification_logs_insert on public.email_notification_logs f
 );
 
 -- Update: retry or status tracking (admin / communications manager / service role)
+drop policy if exists email_notification_logs_update on public.email_notification_logs;
 create policy email_notification_logs_update on public.email_notification_logs for update to authenticated
   using (
     workspace_id = (select public.current_workspace_id())
@@ -108,3 +112,6 @@ end;
 $$;
 
 grant execute on function public.get_email_notification_stats(uuid) to authenticated;
+
+-- Reload Supabase PostgREST schema cache
+notify pgrst, 'reload schema';

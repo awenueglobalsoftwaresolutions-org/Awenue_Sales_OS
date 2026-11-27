@@ -55,6 +55,7 @@ export async function sendInvoiceByEmail(invoiceId, { recipientEmail = null, pdf
 }
 
 export async function getInvoiceEmailDeliveryStatus(invoiceId) {
+  if (!invoiceId) return null
   try {
     const { data, error } = await supabase
       .from('email_notification_logs')
@@ -63,12 +64,13 @@ export async function getInvoiceEmailDeliveryStatus(invoiceId) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    if (error) throw error
-    if (data) return data
-  } catch (err) {
-    console.warn('[InvoiceEmailStatus] Direct query fallback:', err.message)
+    if (error) {
+      return null
+    }
+    return data || null
+  } catch {
+    return null
   }
-  return null
 }
 export const addPayment = async (payload) => {
   const { data, error } = await supabase.from('invoice_payments').insert(payload).select('id').single()
