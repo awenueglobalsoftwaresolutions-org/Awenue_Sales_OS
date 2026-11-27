@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle, Clock, Copy, Download, Eye, FolderInput, Mail, Pencil, RefreshCw, Send, Trash2, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, ChevronLeft, Clock, Copy, Download, Eye, FolderInput, Mail, Pencil, RefreshCw, Send, Trash2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -36,7 +36,7 @@ const EMAIL_STATUS_TONE = {
   not_sent: 'gray',
 }
 const today = () => new Date().toISOString().slice(0, 10)
-const fmtEventType = (t) => t.replace(/_/g, ' ')
+const fmtEventType = (t) => (t ? t.replace(/_/g, ' ') : '')
 
 function AddPaymentModal({ invoice, onClose, onDone }) {
   const { profile } = useAuth()
@@ -184,9 +184,9 @@ export default function InvoiceDetail() {
         <div>
           <h1 className="text-2xl font-bold font-mono">{d.invoice_number}</h1>
           <div className="mt-1 flex flex-wrap gap-2">
-            <Badge tone={STATUS_TONE[st]}>{st.replace('_', ' ')}</Badge>
+            <Badge tone={STATUS_TONE[st] || 'gray'}>{(st || 'draft').replace('_', ' ')}</Badge>
             <Badge tone={EMAIL_STATUS_TONE[effectiveEmailStatus] || 'gray'}>
-              Email: {effectiveEmailStatus.replace('_', ' ')}
+              Email: {(effectiveEmailStatus || 'not_sent').replace('_', ' ')}
             </Badge>
             <span className="text-sm text-ink-500">Due {fmtDay(d.due_date)}</span>
           </div>
